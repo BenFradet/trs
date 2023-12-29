@@ -12,33 +12,25 @@ use crossterm::{
 use nalgebra::{Matrix4, SMatrix};
 use ratatui::{
     backend::CrosstermBackend,
-    layout::{Constraint, Direction, Layout, Rect},
-    style::Color,
-    symbols::Marker,
-    widgets::{
-        canvas::{Canvas, Rectangle},
-        Block, Borders, Widget,
-    },
+    layout::{Alignment, Constraint, Direction, Layout},
+    style::Stylize,
+    text::Line,
+    widgets::Paragraph,
     Frame, Terminal,
 };
+
+use crate::square::Square;
 
 pub struct Game {
     title: &'static str,
     state: SMatrix<u32, 4, 4>,
-    marker: Marker,
 }
 
 impl Game {
     fn new() -> Game {
         Game {
-            title: "Threes",
-            state: Matrix4::new(
-                0, 0, 1, 0,
-                0, 3, 3, 3,
-                1, 1, 0, 0,
-                0, 3, 2, 2, 
-            ),
-            marker: Marker::HalfBlock,
+            title: "Threes, use ← 	↑ 	→ 	↓ to play",
+            state: Matrix4::new(0, 0, 1, 0, 0, 3, 3, 3, 1, 1, 0, 0, 0, 3, 2, 2),
         }
     }
 
@@ -56,46 +48,56 @@ impl Game {
 
     fn ui(&self, frame: &mut Frame) -> () {
         let main_layout = Layout::default()
-            .direction(Direction::Horizontal)
-            .constraints([Constraint::Min(0)])
+            .direction(Direction::Vertical)
+            .constraints([
+                Constraint::Length(4),
+                Constraint::Length(40),
+                Constraint::Min(0),
+            ])
             .split(frame.size());
-        frame.render_widget(self.boxes_canvas(main_layout[0]), main_layout[0]);
-    }
+        frame.render_widget(
+            Paragraph::new(vec![
+                Line::from(self.title.dark_gray()).alignment(Alignment::Left)
+            ]),
+            main_layout[0],
+        );
 
-    fn boxes_canvas(&self, area: Rect) -> impl Widget + '_ {
-        let (left, right, bottom, top) =
-            (0.0, area.width as f64, 0.0, area.height as f64 * 2.0 - 4.0);
-        Canvas::default()
-            .block(Block::default().borders(Borders::ALL).title(self.title))
-            .marker(self.marker)
-            .x_bounds([left, right])
-            .y_bounds([bottom, top])
-            .paint(|ctx| {
-                for i in 0..=3 {
-                    for j in 0..=3 {
-                        let elem = self.state[(i, j)];
-                        ctx.draw(&Rectangle {
-                            x: 2.0 + i as f64 * 14.0,
-                            y: 2.0 + j as f64 * 14.0,
-                            width: 10.0,
-                            height: 10.0,
-                            color: color(elem),
-                        });
-                    }
-                }
+        let game_rows = Layout::default()
+            .direction(Direction::Vertical)
+            .constraints([
+                Constraint::Length(7),
+                Constraint::Length(7),
+                Constraint::Length(7),
+                Constraint::Length(7),
+                Constraint::Min(0),
+            ])
+            .split(main_layout[1]);
+        let game_areas = game_rows
+            .iter()
+            .flat_map(|row| {
+                Layout::default()
+                    .direction(Direction::Horizontal)
+                    .constraints([
+                        Constraint::Length(14),
+                        Constraint::Length(14),
+                        Constraint::Length(14),
+                        Constraint::Length(14),
+                        Constraint::Min(0),
+                    ])
+                    .split(*row)
+                    .iter()
+                    .copied()
+                    .take(4) // ignore min 0
+                    .collect::<Vec<_>>()
             })
+            .collect::<Vec<_>>();
+        for i in 0..=3 {
+            for j in 0..=3 {
+                let elem = self.state[(i, j)];
+                frame.render_widget(Square::from_elem(elem), game_areas[i * 4 + j])
+            }
+        }
     }
-}
-
-fn color(elem: u32) -> Color {
-    if elem == 0 {
-        return Color::DarkGray;
-    } else if elem == 1 {
-        return Color::Blue;
-    } else if elem == 2 {
-        return Color::Red;
-    }
-    Color::Indexed(56)
 }
 
 fn init_terminal() -> Result<Terminal<CrosstermBackend<Stdout>>> {
