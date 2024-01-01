@@ -1,5 +1,6 @@
 use std::{
     io::{stdout, Stdout},
+    ops::ControlFlow,
     time::Duration,
 };
 
@@ -19,28 +20,39 @@ use ratatui::{
     Frame, Terminal,
 };
 
-use crate::square::Square;
+use crate::{square::Square, state::State};
 
 pub struct Game {
     title: &'static str,
-    state: SMatrix<u32, 4, 4>,
+    state: State,
 }
 
 impl Game {
     fn new() -> Game {
         Game {
             title: "Threes, use ← 	↑ 	→ 	↓ to play",
-            state: Matrix4::new(0, 0, 1, 0, 0, 3, 3, 3, 1, 1, 0, 0, 0, 3, 2, 2),
+            state: State::new(Matrix4::new(0, 0, 1, 0, 0, 3, 3, 3, 1, 1, 0, 0, 0, 3, 2, 2)),
         }
     }
 
     pub fn run() -> Result<()> {
         let mut terminal = init_terminal()?;
-        let game = Game::new();
+        let mut game = Game::new();
         loop {
             let _ = terminal.draw(|frame| game.ui(frame));
-            if should_quit()? {
-                break;
+            if !event::poll(Duration::from_millis(100))? {
+                continue;
+            }
+            match event::read()? {
+                Event::Key(key) => {
+                    if key.kind != event::KeyEventKind::Press {
+                        continue;
+                    }
+                    if game.handle_key_event(key).is_break() {
+                        break;
+                    }
+                }
+                _ => (),
             }
         }
         restore_terminal()
@@ -93,10 +105,30 @@ impl Game {
             .collect::<Vec<_>>();
         for i in 0..=3 {
             for j in 0..=3 {
-                let elem = self.state[(i, j)];
+                let elem = self.state.matrix[(i, j)];
                 frame.render_widget(Square::from_elem(elem), game_areas[i * 4 + j])
             }
         }
+    }
+
+    fn handle_key_event(&mut self, key: event::KeyEvent) -> ControlFlow<()> {
+        match key.code {
+            KeyCode::Char('q') => return ControlFlow::Break(()),
+            KeyCode::Left => {
+                self.state.shift_left();
+            }
+            KeyCode::Right => {
+                self.state.shift_right();
+            }
+            KeyCode::Up => {
+                self.state.shift_up();
+            }
+            KeyCode::Down => {
+                self.state.shift_down();
+            }
+            _ => (),
+        }
+        ControlFlow::Continue(())
     }
 }
 
@@ -114,13 +146,4 @@ fn restore_terminal() -> Result<()> {
         .execute(LeaveAlternateScreen)
         .context("failed to leave alternate screen")?;
     Ok(())
-}
-
-fn should_quit() -> Result<bool> {
-    if event::poll(Duration::from_millis(200)).context("failed to poll")? {
-        if let Event::Key(key) = event::read().context("event read failed")? {
-            return Ok(KeyCode::Char('q') == key.code);
-        }
-    }
-    Ok(false)
 }

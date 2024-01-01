@@ -1,10 +1,4 @@
-use ratatui::{
-    layout::Margin,
-    style::Color,
-    style::Style,
-    text::Line,
-    widgets::Widget,
-};
+use ratatui::{layout::Margin, style::Color, style::Style, text::Line, widgets::Widget};
 
 #[derive(Debug, Clone)]
 pub struct Square<'a> {
