@@ -2,6 +2,7 @@
 pub struct Series {
     u_0: u32,
     u_1: u32,
+    n_0: u32,
     q: u32,
 }
 
@@ -10,6 +11,8 @@ impl Series {
         Series {
             u_0: u_0,
             u_1: u_1,
+            // n_0 = 2 since we have two terms u_0 and u_1
+            n_0: 2,
             q: q,
         }
     }
@@ -18,8 +21,16 @@ impl Series {
         match n {
             0 => self.u_0,
             1 => self.u_1,
-            2 => self.u_0 + self.u_1,
-            i => (self.u_0 + self.u_1) * self.q.pow(i - 2),
+            i => (self.u_0 + self.u_1) * self.q.pow(i - self.n_0),
+        }
+    }
+
+    pub fn n(self, u_n: u32) -> u32 {
+        match u_n {
+            u_0 if u_0 == self.u_0 => 0,
+            u_1 if u_1 == self.u_1 => 1,
+            // operation is safe if u_n is generated with the `u_n` function above
+            i => ((u_n / (self.u_0 + self.u_1)) as f64).log(self.q as f64) as u32 + self.n_0
         }
     }
 
@@ -56,5 +67,6 @@ mod tests {
         let s = Series::new(1, 2, 2);
         assert_eq!(s.u_n(n), expected);
         assert_eq!(s.u_n_rec(n), expected);
+        assert_eq!(s.n(expected), n)
     }
 }
