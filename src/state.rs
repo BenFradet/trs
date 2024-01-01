@@ -15,21 +15,25 @@ impl State {
 
     pub fn shift_right(&mut self) -> &mut State {
         self.matrix = self.matrix.remove_column(3).insert_column(0, 0);
+        self.max = self.matrix.max();
         self
     }
 
     pub fn shift_left(&mut self) -> &mut State {
         self.matrix = self.matrix.remove_column(0).insert_column(3, 0);
+        self.max = self.matrix.max();
         self
     }
 
     pub fn shift_up(&mut self) -> &mut State {
         self.matrix = self.matrix.remove_row(0).insert_row(3, 0);
+        self.max = self.matrix.max();
         self
     }
 
     pub fn shift_down(&mut self) -> &mut State {
         self.matrix = self.matrix.remove_row(3).insert_row(0, 0);
+        self.max = self.matrix.max();
         self
     }
 }
