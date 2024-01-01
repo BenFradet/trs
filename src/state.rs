@@ -1,7 +1,10 @@
 use nalgebra::{Matrix4, SMatrix};
 
+use crate::series::Series;
+
 pub struct State {
     pub matrix: SMatrix<u32, 4, 4>,
+    series: Series,
     max: u32,
 }
 
@@ -9,8 +12,17 @@ impl State {
     pub fn new(m: Matrix4<u32>) -> State {
         State {
             matrix: m,
+            series: Series::new(1, 2, 2),
             max: m.max(),
         }
+    }
+
+    fn next_tile(self) -> u32 {
+        1
+    }
+
+    pub fn max_rank(self) -> u32 {
+        self.series.n(self.max)
     }
 
     pub fn shift_right(&mut self) -> &mut State {
