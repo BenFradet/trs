@@ -1,5 +1,6 @@
 use anyhow::Result;
 
+mod distribution;
 mod game;
 mod series;
 mod square;

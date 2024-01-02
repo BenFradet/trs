@@ -11,6 +11,7 @@ use crossterm::{
     ExecutableCommand,
 };
 use nalgebra::Matrix4;
+use rand::rngs::OsRng;
 use ratatui::{
     backend::CrosstermBackend,
     layout::{Alignment, Constraint, Direction, Layout},
@@ -24,20 +25,21 @@ use crate::{square::Square, state::State};
 
 pub struct Game {
     title: &'static str,
-    state: State,
+    state: State<OsRng>,
 }
 
 impl Game {
-    fn new() -> Game {
+    fn new(r: OsRng) -> Game {
         Game {
             title: "Threes, use ← 	↑ 	→ 	↓ to play",
-            state: State::new(Matrix4::new(0, 0, 1, 0, 0, 3, 3, 3, 1, 1, 0, 0, 0, 3, 2, 2)),
+            state: State::new(Matrix4::new(0, 0, 1, 0, 0, 3, 3, 3, 1, 1, 0, 0, 0, 3, 2, 2), r),
         }
     }
 
     pub fn run() -> Result<()> {
         let mut terminal = init_terminal()?;
-        let mut game = Game::new();
+        let r = OsRng;
+        let mut game = Game::new(r);
         loop {
             let _ = terminal.draw(|frame| game.ui(frame));
             if !event::poll(Duration::from_millis(100))? {

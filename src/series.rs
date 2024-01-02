@@ -25,12 +25,13 @@ impl Series {
         }
     }
 
+    // reciprocal of u_n
     pub fn n(self, u_n: u32) -> u32 {
         match u_n {
             u_0 if u_0 == self.u_0 => 0,
             u_1 if u_1 == self.u_1 => 1,
             // operation is safe if u_n is generated with the `u_n` function above
-            i => ((u_n / (self.u_0 + self.u_1)) as f64).log(self.q as f64) as u32 + self.n_0
+            i => ((u_n / (self.u_0 + self.u_1)) as f64).log(self.q as f64) as u32 + self.n_0,
         }
     }
 
