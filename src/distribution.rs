@@ -12,10 +12,6 @@ impl Distribution {
         Distribution { p }
     }
 
-    pub fn p(&self) -> f64 {
-        self.p
-    }
-
     pub fn sample<R: Rng + ?Sized>(&self, random: &mut R) -> u32 {
         let x: f64 = random.sample(OpenClosed01);
         x.log(1.0 - self.p).ceil() as u32

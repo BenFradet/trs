@@ -32,7 +32,10 @@ impl Game {
     fn new(r: OsRng) -> Game {
         Game {
             title: "Threes, use ← 	↑ 	→ 	↓ to play",
-            state: State::new(Matrix4::new(0, 0, 1, 0, 0, 3, 3, 3, 1, 1, 0, 0, 0, 3, 2, 2), r),
+            state: State::new(
+                r,
+                Matrix4::new(0, 0, 1, 0, 0, 3, 3, 3, 1, 1, 0, 0, 0, 3, 2, 2),
+            ),
         }
     }
 
