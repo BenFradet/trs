@@ -23,9 +23,13 @@ impl<R: Rng + Sized> State<R> {
         }
     }
 
-    fn current_tile(&mut self) -> u32 {
+    pub fn current_tile(&mut self) -> u32 {
         match self.next_tile {
-            None => self.random.sample(Uniform::new(1, 3)),
+            None => {
+                let res = self.random.sample(Uniform::new(1, 3));
+                self.next_tile = Some(res);
+                res
+            },
             Some(other) => other,
         }
     }
@@ -82,7 +86,22 @@ mod tests {
     use super::*;
 
     #[test]
-    fn next_val_is_less_than_or_equal_to_max() -> () {
+    fn current_tile_is_stable_after_first_call() -> () {
+        let r = OsRng;
+        let mut s = State::new(r, Matrix4::repeat(12));
+        assert_eq!(s.next_tile, None);
+        let first_tile = s.current_tile();
+        assert!(first_tile == 1 || first_tile == 2);
+        for _ in 0..=100 {
+            let current_tile = s.current_tile();
+            let next_tile = s.next_tile;
+            assert_eq!(current_tile, first_tile);
+            assert_eq!(next_tile, Some(first_tile));
+        }
+    }
+
+    #[test]
+    fn next_tile_is_less_than_or_equal_to_max() -> () {
         let r = OsRng;
         let mut s = State::new(r, Matrix4::repeat(12));
         let mut vec = Vec::new();
