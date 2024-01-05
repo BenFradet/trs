@@ -17,7 +17,7 @@ use ratatui::{
     layout::{Alignment, Constraint, Direction, Layout},
     style::Stylize,
     text::Line,
-    widgets::Paragraph,
+    widgets::{Paragraph, Block, Borders},
     Frame, Terminal,
 };
 
@@ -25,13 +25,16 @@ use crate::{square::Square, state::State};
 
 pub struct Game {
     title: &'static str,
+    instruction: &'static str,
     state: State<OsRng>,
 }
 
 impl Game {
     fn new(r: OsRng) -> Game {
+        // todo: initial matrix should be gen'd
         Game {
-            title: "Threes, use ← 	↑ 	→ 	↓ to play",
+            title: "Threes",
+            instruction: "use ← 	↑ 	→ 	↓ to play",
             state: State::new(
                 r,
                 Matrix4::new(0, 0, 1, 0, 0, 3, 3, 3, 1, 1, 0, 0, 0, 3, 2, 2),
@@ -63,11 +66,12 @@ impl Game {
         restore_terminal()
     }
 
-    fn ui(&self, frame: &mut Frame) -> () {
+    fn ui(&mut self, frame: &mut Frame) -> () {
         let main_layout = Layout::default()
             .direction(Direction::Vertical)
             .constraints([
-                Constraint::Length(4),
+                Constraint::Length(2),
+                Constraint::Length(7),
                 Constraint::Length(40),
                 Constraint::Min(0),
             ])
@@ -79,6 +83,25 @@ impl Game {
             main_layout[0],
         );
 
+        let horizontal_sep = Layout::default()
+            .direction(Direction::Horizontal)
+            .constraints([
+                Constraint::Length(14),
+                Constraint::Length(14),
+                Constraint::Length(14),
+                Constraint::Length(14),
+                Constraint::Min(0),
+            ]);
+
+        // next tile
+        let next_tile_block = Block::new()
+            .borders(Borders::ALL)
+            .title("next tile".dark_gray());
+        let next_tile_widget = Square::from_elem(self.state.current_tile())
+            .block(next_tile_block);
+        frame.render_widget(next_tile_widget, horizontal_sep.split(main_layout[1])[0]);
+
+        // matrix
         let game_rows = Layout::default()
             .direction(Direction::Vertical)
             .constraints([
@@ -88,19 +111,11 @@ impl Game {
                 Constraint::Length(7),
                 Constraint::Min(0),
             ])
-            .split(main_layout[1]);
+            .split(main_layout[2]);
         let game_areas = game_rows
             .iter()
             .flat_map(|row| {
-                Layout::default()
-                    .direction(Direction::Horizontal)
-                    .constraints([
-                        Constraint::Length(14),
-                        Constraint::Length(14),
-                        Constraint::Length(14),
-                        Constraint::Length(14),
-                        Constraint::Min(0),
-                    ])
+                horizontal_sep
                     .split(*row)
                     .iter()
                     .copied()
