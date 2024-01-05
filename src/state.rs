@@ -1,14 +1,14 @@
 use nalgebra::{Matrix4, SMatrix};
-use rand::{Rng, distributions::Uniform};
+use rand::{distributions::Uniform, Rng};
 
-use crate::{series::Series, distribution::Distribution};
+use crate::{distribution::Distribution, series::Series};
 
 pub struct State<R: Rng + Sized> {
     pub matrix: SMatrix<u32, 4, 4>,
     series: Series,
     distribution: Distribution,
     random: R,
-    next_val: Option<u32>,
+    next_tile: Option<u32>,
 }
 
 impl<R: Rng + Sized> State<R> {
@@ -19,21 +19,21 @@ impl<R: Rng + Sized> State<R> {
             series: Series::new(1, 2, 2),
             distribution: Distribution::new(0.5),
             random: r,
-            next_val: None,
+            next_tile: None,
         }
     }
 
-    fn current_val(&mut self) -> u32 {
-        match self.next_val {
+    fn current_tile(&mut self) -> u32 {
+        match self.next_tile {
             None => self.random.sample(Uniform::new(1, 3)),
             Some(other) => other,
         }
     }
 
-    fn next_val(&mut self) -> &mut State<R> {
+    fn gen_next_tile(&mut self) -> &mut State<R> {
         let max = self.matrix.max();
         let rank = self.rank(max);
-        self.next_val = Some(self.series.u_n(rank));
+        self.next_tile = Some(self.series.u_n(rank));
         self
     }
 
@@ -46,40 +46,32 @@ impl<R: Rng + Sized> State<R> {
                 let sampled_rank = self.distribution.sample(&mut self.random);
                 // ranks are 0-based, the distribution is 1 based
                 (sampled_rank - 1).min(max_rank)
-            },
+            }
         }
     }
 
     pub fn shift_right(&mut self) -> &mut State<R> {
-        self.matrix = self.matrix
-            .remove_column(3)
-            .insert_column(0, 0);
-        self.matrix[(0, 0)] = self.current_val();
-        self.next_val()
+        self.matrix = self.matrix.remove_column(3).insert_column(0, 0);
+        self.matrix[(0, 0)] = self.current_tile();
+        self.gen_next_tile()
     }
 
     pub fn shift_left(&mut self) -> &mut State<R> {
-        self.matrix = self.matrix
-            .remove_column(0)
-            .insert_column(3, 0);
-        self.matrix[(0, 3)] = self.current_val();
-        self.next_val()
+        self.matrix = self.matrix.remove_column(0).insert_column(3, 0);
+        self.matrix[(0, 3)] = self.current_tile();
+        self.gen_next_tile()
     }
 
     pub fn shift_up(&mut self) -> &mut State<R> {
-        self.matrix = self.matrix
-            .remove_row(0)
-            .insert_row(3, 0);
-        self.matrix[(3, 0)] = self.current_val();
-        self.next_val()
+        self.matrix = self.matrix.remove_row(0).insert_row(3, 0);
+        self.matrix[(3, 0)] = self.current_tile();
+        self.gen_next_tile()
     }
 
     pub fn shift_down(&mut self) -> &mut State<R> {
-        self.matrix = self.matrix
-            .remove_row(3)
-            .insert_row(0, 0);
-        self.matrix[(0, 0)] = self.current_val();
-        self.next_val()
+        self.matrix = self.matrix.remove_row(3).insert_row(0, 0);
+        self.matrix[(0, 0)] = self.current_tile();
+        self.gen_next_tile()
     }
 }
 
@@ -95,7 +87,7 @@ mod tests {
         let mut s = State::new(r, Matrix4::repeat(12));
         let mut vec = Vec::new();
         for _ in 0..=1000 {
-            let res = s.current_val();
+            let res = s.current_tile();
             vec.push(res);
         }
         assert!(vec.into_iter().all(|r| r <= 12));
