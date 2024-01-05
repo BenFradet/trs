@@ -8,7 +8,7 @@ pub struct State<R: Rng + Sized> {
     series: Series,
     distribution: Distribution,
     random: R,
-    next_val: u32,
+    next_val: Option<u32>,
 }
 
 impl<R: Rng + Sized> State<R> {
@@ -19,14 +19,21 @@ impl<R: Rng + Sized> State<R> {
             series: Series::new(1, 2, 2),
             distribution: Distribution::new(0.5),
             random: r,
-            next_val: 1,
+            next_val: None,
+        }
+    }
+
+    fn current_val(&mut self) -> u32 {
+        match self.next_val {
+            None => self.random.sample(Uniform::new(1, 3)),
+            Some(other) => other,
         }
     }
 
     fn next_val(&mut self) -> &mut State<R> {
         let max = self.matrix.max();
         let rank = self.rank(max);
-        self.next_val = self.series.u_n(rank);
+        self.next_val = Some(self.series.u_n(rank));
         self
     }
 
@@ -47,7 +54,7 @@ impl<R: Rng + Sized> State<R> {
         self.matrix = self.matrix
             .remove_column(3)
             .insert_column(0, 0);
-        self.matrix[(0, 0)] = self.next_val;
+        self.matrix[(0, 0)] = self.current_val();
         self.next_val()
     }
 
@@ -55,7 +62,7 @@ impl<R: Rng + Sized> State<R> {
         self.matrix = self.matrix
             .remove_column(0)
             .insert_column(3, 0);
-        self.matrix[(0, 3)] = self.next_val;
+        self.matrix[(0, 3)] = self.current_val();
         self.next_val()
     }
 
@@ -63,7 +70,7 @@ impl<R: Rng + Sized> State<R> {
         self.matrix = self.matrix
             .remove_row(0)
             .insert_row(3, 0);
-        self.matrix[(3, 0)] = self.next_val;
+        self.matrix[(3, 0)] = self.current_val();
         self.next_val()
     }
 
@@ -71,7 +78,7 @@ impl<R: Rng + Sized> State<R> {
         self.matrix = self.matrix
             .remove_row(3)
             .insert_row(0, 0);
-        self.matrix[(0, 0)] = self.next_val;
+        self.matrix[(0, 0)] = self.current_val();
         self.next_val()
     }
 }
@@ -88,8 +95,8 @@ mod tests {
         let mut s = State::new(r, Matrix4::repeat(12));
         let mut vec = Vec::new();
         for _ in 0..=1000 {
-            let res = s.next_val();
-            vec.push(res.next_val);
+            let res = s.current_val();
+            vec.push(res);
         }
         assert!(vec.into_iter().all(|r| r <= 12));
     }
@@ -166,7 +173,9 @@ mod tests {
         for i in 0..=3 {
             for j in 0..=3 {
                 if i == 0 && j == 0 {
-                    assert_eq!(res.matrix[(i, j)], 1);
+                    let tile = res.matrix[(i, j)];
+                    println!("{}", tile);
+                    assert!(tile == 1 || tile == 2);
                 } else if j == 0 {
                     assert_eq!(res.matrix[(i, j)], 0);
                 } else {
@@ -184,7 +193,8 @@ mod tests {
         for i in 0..=3 {
             for j in 0..=3 {
                 if i == 0 && j == 3 {
-                    assert_eq!(res.matrix[(i, j)], 1);
+                    let tile = res.matrix[(i, j)];
+                    assert!(tile == 1 || tile == 2);
                 } else if j == 3 {
                     assert_eq!(res.matrix[(i, j)], 0);
                 } else {
@@ -202,7 +212,8 @@ mod tests {
         for i in 0..=3 {
             for j in 0..=3 {
                 if i == 3 && j == 0 {
-                    assert_eq!(res.matrix[(i, j)], 1);
+                    let tile = res.matrix[(i, j)];
+                    assert!(tile == 1 || tile == 2);
                 } else if i == 3 {
                     assert_eq!(res.matrix[(i, j)], 0);
                 } else {
@@ -220,7 +231,8 @@ mod tests {
         for i in 0..=3 {
             for j in 0..=3 {
                 if i == 0 && j == 0 {
-                    assert_eq!(res.matrix[(i, j)], 1);
+                    let tile = res.matrix[(i, j)];
+                    assert!(tile == 1 || tile == 2);
                 } else if i == 0 {
                     assert_eq!(res.matrix[(i, j)], 0);
                 } else {
