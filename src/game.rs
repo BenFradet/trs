@@ -27,6 +27,9 @@ pub struct Game {
     title: &'static str,
     instruction: &'static str,
     state: State<OsRng>,
+    tile_width: u16,
+    tile_height: u16,
+    tile_number: u16,
 }
 
 impl Game {
@@ -39,6 +42,9 @@ impl Game {
                 r,
                 Matrix4::new(0, 0, 1, 0, 0, 3, 3, 3, 1, 1, 0, 0, 0, 3, 2, 2),
             ),
+            tile_width: 14,
+            tile_height: 7,
+            tile_number: 4,
         }
     }
 
@@ -86,10 +92,10 @@ impl Game {
         let horizontal_sep = Layout::default()
             .direction(Direction::Horizontal)
             .constraints([
-                Constraint::Length(14),
-                Constraint::Length(14),
-                Constraint::Length(14),
-                Constraint::Length(14),
+                Constraint::Length(self.tile_width),
+                Constraint::Length(self.tile_width),
+                Constraint::Length(self.tile_width),
+                Constraint::Length(self.tile_width),
                 Constraint::Min(0),
             ]);
 
@@ -101,14 +107,33 @@ impl Game {
             .block(next_tile_block);
         frame.render_widget(next_tile_widget, horizontal_sep.split(main_layout[1])[0]);
 
-        // matrix
+        // game block
+        let game_block = Block::new()
+            .borders(Borders::ALL)
+            .title(self.instruction.dark_gray());
+        let game_layout_h = Layout::default()
+            .direction(Direction::Horizontal)
+            .constraints([
+                Constraint::Max(self.tile_width * self.tile_number),
+                Constraint::Min(0),
+            ]);
+        let game_layout_v = Layout::default()
+            .direction(Direction::Vertical)
+            .constraints([
+                Constraint::Max(self.tile_height * self.tile_number),
+                Constraint::Min(0),
+            ]);
+        let game_area = game_layout_h.split(game_layout_v.split(main_layout[2])[0])[0];
+        frame.render_widget(game_block, game_area);
+
+        // game
         let game_rows = Layout::default()
             .direction(Direction::Vertical)
             .constraints([
-                Constraint::Length(7),
-                Constraint::Length(7),
-                Constraint::Length(7),
-                Constraint::Length(7),
+                Constraint::Length(self.tile_height),
+                Constraint::Length(self.tile_height),
+                Constraint::Length(self.tile_height),
+                Constraint::Length(self.tile_height),
                 Constraint::Min(0),
             ])
             .split(main_layout[2]);
