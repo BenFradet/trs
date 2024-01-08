@@ -5,6 +5,7 @@ mod game;
 mod series;
 mod square;
 mod state;
+mod playfield;
 
 fn main() -> Result<()> {
     game::Game::run()

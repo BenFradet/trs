@@ -11,7 +11,7 @@ use crossterm::{
     ExecutableCommand,
 };
 use nalgebra::Matrix4;
-use rand::rngs::OsRng;
+use rand::{rngs::OsRng, Rng};
 use ratatui::{
     backend::CrosstermBackend,
     layout::{Alignment, Constraint, Direction, Layout},
@@ -26,14 +26,14 @@ use crate::{square::Square, state::State};
 pub struct Game {
     title: &'static str,
     instruction: &'static str,
-    state: State<OsRng>,
+    state: State,
     tile_width: u16,
     tile_height: u16,
     tile_number: u16,
 }
 
 impl Game {
-    fn new(r: OsRng) -> Game {
+    fn new(r: &mut OsRng) -> Game {
         // todo: initial matrix should be gen'd
         Game {
             title: "Threes",
@@ -50,8 +50,8 @@ impl Game {
 
     pub fn run() -> Result<()> {
         let mut terminal = init_terminal()?;
-        let r = OsRng;
-        let mut game = Game::new(r);
+        let mut r = OsRng;
+        let mut game = Game::new(&mut r);
         loop {
             let _ = terminal.draw(|frame| game.ui(frame));
             if !event::poll(Duration::from_millis(100))? {
@@ -62,7 +62,7 @@ impl Game {
                     if key.kind != event::KeyEventKind::Press {
                         continue;
                     }
-                    if game.handle_key_event(key).is_break() {
+                    if game.handle_key_event(&mut r, key).is_break() {
                         break;
                     }
                 }
@@ -103,7 +103,7 @@ impl Game {
         let next_tile_block = Block::new()
             .borders(Borders::ALL)
             .title("next tile".dark_gray());
-        let next_tile_widget = Square::from_elem(self.state.current_tile())
+        let next_tile_widget = Square::from_elem(self.state.next_tile)
             .block(next_tile_block);
         frame.render_widget(next_tile_widget, horizontal_sep.split(main_layout[1])[0]);
 
@@ -156,20 +156,20 @@ impl Game {
         }
     }
 
-    fn handle_key_event(&mut self, key: event::KeyEvent) -> ControlFlow<()> {
+    fn handle_key_event<R: Rng + ?Sized>(&mut self, r: &mut R, key: event::KeyEvent) -> ControlFlow<()> {
         match key.code {
             KeyCode::Char('q') => return ControlFlow::Break(()),
             KeyCode::Left => {
-                self.state.shift_left();
+                self.state.shift_left(r);
             }
             KeyCode::Right => {
-                self.state.shift_right();
+                self.state.shift_right(r);
             }
             KeyCode::Up => {
-                self.state.shift_up();
+                self.state.shift_up(r);
             }
             KeyCode::Down => {
-                self.state.shift_down();
+                self.state.shift_down(r);
             }
             _ => (),
         }

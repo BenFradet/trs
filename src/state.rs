@@ -3,79 +3,77 @@ use rand::{distributions::Uniform, Rng};
 
 use crate::{distribution::Distribution, series::Series};
 
-pub struct State<R: Rng + Sized> {
+pub struct State {
     pub matrix: SMatrix<u32, 4, 4>,
+    pub next_tile: u32,
     series: Series,
     distribution: Distribution,
-    random: R,
-    next_tile: Option<u32>,
 }
 
-impl<R: Rng + Sized> State<R> {
+impl State {
     // todo: next_val should be r.sample(Uniform::new(1, 3))
-    pub fn new(r: R, m: Matrix4<u32>) -> State<R> {
+    pub fn new<R: Rng + ?Sized>(r: &mut R, m: Matrix4<u32>) -> State {
         State {
             matrix: m,
+            next_tile: r.sample(Uniform::new(1, 3)),
             series: Series::new(1, 2, 2),
             distribution: Distribution::new(0.5),
-            random: r,
-            next_tile: None,
         }
     }
 
-    pub fn current_tile(&mut self) -> u32 {
-        match self.next_tile {
-            None => {
-                let res = self.random.sample(Uniform::new(1, 3));
-                self.next_tile = Some(res);
-                res
-            },
-            Some(other) => other,
-        }
-    }
+    //pub fn current_tile(&mut self) -> u32 {
+    //    match self.next_tile {
+    //        None => {
+    //            let res = self.random.sample(Uniform::new(1, 3));
+    //            self.next_tile = Some(res);
+    //            res
+    //        },
+    //        Some(other) => other,
+    //    }
+    //}
 
-    fn gen_next_tile(&mut self) -> &mut State<R> {
+    fn gen_next_tile<R: Rng + ?Sized>(&mut self, r: &mut R) -> &mut State {
         let max = self.matrix.max();
-        let rank = self.rank(max);
-        self.next_tile = Some(self.series.u_n(rank));
+        let rank = self.rank(r, max);
+        self.next_tile = self.series.u_n(rank);
         self
     }
 
-    fn rank(&mut self, max: u32) -> u32 {
+    fn rank<R: Rng + ?Sized>(&mut self, r: &mut R, max: u32) -> u32 {
         let max_rank = self.series.n(max);
         match max_rank {
             // high excluding
-            0 | 1 => self.random.sample(Uniform::new(0, 2)),
+            0 | 1 => r.sample(Uniform::new(0, 2)),
             _ => {
-                let sampled_rank = self.distribution.sample(&mut self.random);
+                let sampled_rank = self.distribution.sample(r);
                 // ranks are 0-based, the distribution is 1 based
                 (sampled_rank - 1).min(max_rank)
             }
         }
     }
 
-    pub fn shift_right(&mut self) -> &mut State<R> {
+    pub fn shift_right<R: Rng + ?Sized>(&mut self, r: &mut R) -> &mut State {
         self.matrix = self.matrix.remove_column(3).insert_column(0, 0);
-        self.matrix[(0, 0)] = self.current_tile();
-        self.gen_next_tile()
+        self.matrix[(0, 0)] = self.next_tile;
+        self.gen_next_tile(r)
     }
 
-    pub fn shift_left(&mut self) -> &mut State<R> {
+    pub fn shift_left<R: Rng + ?Sized>(&mut self, r: &mut R) -> &mut State {
         self.matrix = self.matrix.remove_column(0).insert_column(3, 0);
-        self.matrix[(0, 3)] = self.current_tile();
-        self.gen_next_tile()
+        self.matrix[(0, 3)] = self.next_tile;
+        self.gen_next_tile(r)
     }
 
-    pub fn shift_up(&mut self) -> &mut State<R> {
+    pub fn shift_up<R: Rng + ?Sized>(&mut self, r: &mut R) -> &mut State {
         self.matrix = self.matrix.remove_row(0).insert_row(3, 0);
-        self.matrix[(3, 0)] = self.current_tile();
-        self.gen_next_tile()
+        self.matrix[(3, 0)] = self.next_tile;
+        self.gen_next_tile(r)
     }
 
-    pub fn shift_down(&mut self) -> &mut State<R> {
+    pub fn shift_down<R: Rng + ?Sized>(&mut self, r: &mut R) -> &mut State {
         self.matrix = self.matrix.remove_row(3).insert_row(0, 0);
-        self.matrix[(0, 0)] = self.current_tile();
-        self.gen_next_tile()
+        self.matrix[(0, 0)] = self.next_tile;
+        self.gen_next_tile(r)
     }
 }
 
@@ -86,27 +84,12 @@ mod tests {
     use super::*;
 
     #[test]
-    fn current_tile_is_stable_after_first_call() -> () {
-        let r = OsRng;
-        let mut s = State::new(r, Matrix4::repeat(12));
-        assert_eq!(s.next_tile, None);
-        let first_tile = s.current_tile();
-        assert!(first_tile == 1 || first_tile == 2);
-        for _ in 0..=100 {
-            let current_tile = s.current_tile();
-            let next_tile = s.next_tile;
-            assert_eq!(current_tile, first_tile);
-            assert_eq!(next_tile, Some(first_tile));
-        }
-    }
-
-    #[test]
     fn next_tile_is_less_than_or_equal_to_max() -> () {
-        let r = OsRng;
-        let mut s = State::new(r, Matrix4::repeat(12));
+        let mut r = OsRng;
+        let mut s = State::new(&mut r, Matrix4::repeat(12));
         let mut vec = Vec::new();
         for _ in 0..=1000 {
-            let res = s.current_tile();
+            let res = s.next_tile;
             vec.push(res);
         }
         assert!(vec.into_iter().all(|r| r <= 12));
@@ -114,11 +97,11 @@ mod tests {
 
     #[test]
     fn rank_0_or_1_if_max_1() -> () {
-        let r = OsRng;
-        let mut s = State::new(r, Matrix4::repeat(1));
+        let mut r = OsRng;
+        let mut s = State::new(&mut r, Matrix4::repeat(1));
         let mut vec = Vec::new();
         for _ in 0..=10 {
-            let res = s.rank(1);
+            let res = s.rank(&mut r, 1);
             vec.push(res);
         }
         assert!(vec.contains(&0));
@@ -127,11 +110,11 @@ mod tests {
 
     #[test]
     fn rank_0_or_1_if_max_2() -> () {
-        let r = OsRng;
-        let mut s = State::new(r, Matrix4::repeat(1));
+        let mut r = OsRng;
+        let mut s = State::new(&mut r, Matrix4::repeat(1));
         let mut vec = Vec::new();
         for _ in 0..=10 {
-            let res = s.rank(2);
+            let res = s.rank(&mut r, 2);
             vec.push(res);
         }
         assert!(vec.contains(&0));
@@ -140,11 +123,11 @@ mod tests {
 
     #[test]
     fn rank_possibly_2_if_max_3() -> () {
-        let r = OsRng;
-        let mut s = State::new(r, Matrix4::repeat(1));
+        let mut r = OsRng;
+        let mut s = State::new(&mut r, Matrix4::repeat(1));
         let mut vec = Vec::new();
         for _ in 0..=10 {
-            let res = s.rank(3);
+            let res = s.rank(&mut r, 3);
             vec.push(res);
         }
         assert!(vec.contains(&2));
@@ -152,11 +135,11 @@ mod tests {
 
     #[test]
     fn rank_cant_have_more_than_max_rank() -> () {
-        let r = OsRng;
-        let mut s = State::new(r, Matrix4::repeat(1));
+        let mut r = OsRng;
+        let mut s = State::new(&mut r, Matrix4::repeat(1));
         let mut vec = Vec::new();
         for _ in 0..=1000 {
-            let res = s.rank(12);
+            let res = s.rank(&mut r, 12);
             vec.push(res);
         }
         // rank of 12 is 4
@@ -166,11 +149,11 @@ mod tests {
     #[test]
     fn rank_can_be_0_if_max_greater_than_2() -> () {
         // the distribution is 1-based, our ranks are 0-based
-        let r = OsRng;
-        let mut s = State::new(r, Matrix4::repeat(1));
+        let mut r = OsRng;
+        let mut s = State::new(&mut r, Matrix4::repeat(1));
         let mut vec = Vec::new();
         for _ in 0..=10 {
-            let res = s.rank(12);
+            let res = s.rank(&mut r, 12);
             vec.push(res);
         }
         assert!(vec.contains(&0));
@@ -178,9 +161,9 @@ mod tests {
 
     #[test]
     fn shift_right_fills_left_with_zeroes() -> () {
-        let r = OsRng;
-        let mut s = State::new(r, Matrix4::repeat(1));
-        let res = s.shift_right();
+        let mut r = OsRng;
+        let mut s = State::new(&mut r, Matrix4::repeat(1));
+        let res = s.shift_right(&mut r);
         for i in 0..=3 {
             for j in 0..=3 {
                 if i == 0 && j == 0 {
@@ -198,9 +181,9 @@ mod tests {
 
     #[test]
     fn shift_left_fills_right_with_zeroes() -> () {
-        let r = OsRng;
-        let mut s = State::new(r, Matrix4::repeat(1));
-        let res = s.shift_left();
+        let mut r = OsRng;
+        let mut s = State::new(&mut r, Matrix4::repeat(1));
+        let res = s.shift_left(&mut r);
         for i in 0..=3 {
             for j in 0..=3 {
                 if i == 0 && j == 3 {
@@ -217,9 +200,9 @@ mod tests {
 
     #[test]
     fn shift_up_fills_bottom_with_zeroes() -> () {
-        let r = OsRng;
-        let mut s = State::new(r, Matrix4::repeat(1));
-        let res = s.shift_up();
+        let mut r = OsRng;
+        let mut s = State::new(&mut r, Matrix4::repeat(1));
+        let res = s.shift_up(&mut r);
         for i in 0..=3 {
             for j in 0..=3 {
                 if i == 3 && j == 0 {
@@ -236,9 +219,9 @@ mod tests {
 
     #[test]
     fn shift_down_fills_up_with_zeroes() -> () {
-        let r = OsRng;
-        let mut s = State::new(r, Matrix4::repeat(1));
-        let res = s.shift_down();
+        let mut r = OsRng;
+        let mut s = State::new(&mut r, Matrix4::repeat(1));
+        let res = s.shift_down(&mut r);
         for i in 0..=3 {
             for j in 0..=3 {
                 if i == 0 && j == 0 {
