@@ -1,7 +1,7 @@
 use nalgebra::{Matrix4, SMatrix};
 use rand::{distributions::Uniform, Rng};
 
-use crate::{distribution::Distribution, series::Series};
+use crate::{distribution::Distribution, series::Series, direction::Direction};
 
 pub struct State {
     pub matrix: SMatrix<u32, 4, 4>,
@@ -11,7 +11,6 @@ pub struct State {
 }
 
 impl State {
-    // todo: next_val should be r.sample(Uniform::new(1, 3))
     pub fn new<R: Rng + ?Sized>(r: &mut R, m: Matrix4<u32>) -> State {
         State {
             matrix: m,
@@ -21,16 +20,27 @@ impl State {
         }
     }
 
-    //pub fn current_tile(&mut self) -> u32 {
-    //    match self.next_tile {
-    //        None => {
-    //            let res = self.random.sample(Uniform::new(1, 3));
-    //            self.next_tile = Some(res);
-    //            res
-    //        },
-    //        Some(other) => other,
-    //    }
-    //}
+    pub fn shift<R: Rng + ?Sized>(&mut self, r: &mut R, direction: Direction) -> &mut State {
+        match direction {
+            Direction::Up => {
+                self.matrix = self.matrix.remove_row(0).insert_row(3, 0);
+                self.matrix[(3, 0)] = self.next_tile;
+            },
+            Direction::Down => {
+                self.matrix = self.matrix.remove_row(3).insert_row(0, 0);
+                self.matrix[(0, 0)] = self.next_tile;
+            }
+            Direction::Left => {
+                self.matrix = self.matrix.remove_column(0).insert_column(3, 0);
+                self.matrix[(0, 3)] = self.next_tile;
+            },
+            Direction::Right => {
+                self.matrix = self.matrix.remove_column(3).insert_column(0, 0);
+                self.matrix[(0, 0)] = self.next_tile;
+            }
+        }
+        self.gen_next_tile(r)
+    }
 
     fn gen_next_tile<R: Rng + ?Sized>(&mut self, r: &mut R) -> &mut State {
         let max = self.matrix.max();
@@ -51,30 +61,6 @@ impl State {
             }
         }
     }
-
-    pub fn shift_right<R: Rng + ?Sized>(&mut self, r: &mut R) -> &mut State {
-        self.matrix = self.matrix.remove_column(3).insert_column(0, 0);
-        self.matrix[(0, 0)] = self.next_tile;
-        self.gen_next_tile(r)
-    }
-
-    pub fn shift_left<R: Rng + ?Sized>(&mut self, r: &mut R) -> &mut State {
-        self.matrix = self.matrix.remove_column(0).insert_column(3, 0);
-        self.matrix[(0, 3)] = self.next_tile;
-        self.gen_next_tile(r)
-    }
-
-    pub fn shift_up<R: Rng + ?Sized>(&mut self, r: &mut R) -> &mut State {
-        self.matrix = self.matrix.remove_row(0).insert_row(3, 0);
-        self.matrix[(3, 0)] = self.next_tile;
-        self.gen_next_tile(r)
-    }
-
-    pub fn shift_down<R: Rng + ?Sized>(&mut self, r: &mut R) -> &mut State {
-        self.matrix = self.matrix.remove_row(3).insert_row(0, 0);
-        self.matrix[(0, 0)] = self.next_tile;
-        self.gen_next_tile(r)
-    }
 }
 
 #[cfg(test)]
@@ -86,7 +72,7 @@ mod tests {
     #[test]
     fn next_tile_is_less_than_or_equal_to_max() -> () {
         let mut r = OsRng;
-        let mut s = State::new(&mut r, Matrix4::repeat(12));
+        let s = State::new(&mut r, Matrix4::repeat(12));
         let mut vec = Vec::new();
         for _ in 0..=1000 {
             let res = s.next_tile;
@@ -163,7 +149,7 @@ mod tests {
     fn shift_right_fills_left_with_zeroes() -> () {
         let mut r = OsRng;
         let mut s = State::new(&mut r, Matrix4::repeat(1));
-        let res = s.shift_right(&mut r);
+        let res = s.shift(&mut r, Direction::Right);
         for i in 0..=3 {
             for j in 0..=3 {
                 if i == 0 && j == 0 {
@@ -183,7 +169,7 @@ mod tests {
     fn shift_left_fills_right_with_zeroes() -> () {
         let mut r = OsRng;
         let mut s = State::new(&mut r, Matrix4::repeat(1));
-        let res = s.shift_left(&mut r);
+        let res = s.shift(&mut r, Direction::Left);
         for i in 0..=3 {
             for j in 0..=3 {
                 if i == 0 && j == 3 {
@@ -202,7 +188,7 @@ mod tests {
     fn shift_up_fills_bottom_with_zeroes() -> () {
         let mut r = OsRng;
         let mut s = State::new(&mut r, Matrix4::repeat(1));
-        let res = s.shift_up(&mut r);
+        let res = s.shift(&mut r, Direction::Up);
         for i in 0..=3 {
             for j in 0..=3 {
                 if i == 3 && j == 0 {
@@ -221,7 +207,7 @@ mod tests {
     fn shift_down_fills_up_with_zeroes() -> () {
         let mut r = OsRng;
         let mut s = State::new(&mut r, Matrix4::repeat(1));
-        let res = s.shift_down(&mut r);
+        let res = s.shift(&mut r, Direction::Down);
         for i in 0..=3 {
             for j in 0..=3 {
                 if i == 0 && j == 0 {
