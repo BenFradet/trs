@@ -10,7 +10,6 @@ use crossterm::{
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
     ExecutableCommand,
 };
-use nalgebra::Matrix4;
 use rand::{rngs::OsRng, Rng};
 use ratatui::{
     backend::CrosstermBackend,
@@ -40,7 +39,7 @@ impl Game {
             instruction: "use ← 	↑ 	→ 	↓ to play",
             state: State::new(
                 r,
-                Matrix4::new(0, 0, 1, 0, 0, 3, 3, 3, 1, 1, 0, 0, 0, 3, 2, 2),
+                Box::new([4, 2, 2, 2]),
             ),
             tile_width: 14,
             tile_height: 7,
@@ -150,7 +149,7 @@ impl Game {
             .collect::<Vec<_>>();
         for i in 0..=3 {
             for j in 0..=3 {
-                let elem = self.state.matrix[(i, j)];
+                let elem = self.state.grid.matrix[(i, j)];
                 frame.render_widget(Square::from_elem(elem), game_areas[i * 4 + j])
             }
         }
