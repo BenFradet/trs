@@ -20,7 +20,7 @@ use ratatui::{
     Frame, Terminal,
 };
 
-use crate::{square::Square, state::State, direction};
+use crate::{square::Square, state::State};
 
 pub struct Game {
     title: &'static str,
@@ -156,7 +156,7 @@ impl Game {
     }
 
     fn handle_key_event<R: Rng + ?Sized>(&mut self, r: &mut R, key: event::KeyEvent) -> ControlFlow<()> {
-        if let Some(dir) = direction::Direction::from_key_code(key.code) {
+        if let Some(dir) = crate::state::direction::Direction::from_key_code(key.code) {
             self.state.shift(r, dir);
         } else if key.code == KeyCode::Char('q') {
             return ControlFlow::Break(())

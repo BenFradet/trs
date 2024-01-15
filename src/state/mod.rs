@@ -1,6 +1,10 @@
 use rand::{distributions::Uniform, Rng};
 
-use crate::{distribution::Distribution, series::Series, direction::Direction, grid::Grid};
+use crate::{math::distribution::Distribution, math::series::Series, state::direction::Direction, state::grid::Grid};
+
+pub mod buckets;
+pub mod grid;
+pub mod direction;
 
 pub struct State {
     pub grid: Grid,

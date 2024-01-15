@@ -1,7 +1,7 @@
 use nalgebra::{SMatrix, Matrix4};
 use rand::Rng;
 
-use crate::buckets::Buckets;
+use crate::state::buckets::Buckets;
 
 pub struct Grid {
     pub matrix: SMatrix<u32, 4, 4>,
