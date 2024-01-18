@@ -11,20 +11,18 @@ impl Buckets {
     // unsafe for large generation
     pub fn new<R: Rng + ?Sized>(
         r: &mut R,
-        base_values: Box<[u32]>,
+        mut base_values: Box<[u32]>,
         desired_size: usize,
     ) -> Buckets {
         let missing_elements = desired_size as u32 - base_values.iter().sum::<u32>();
         let size = base_values.len();
         let distribution = Uniform::new(0, size);
-        // clone to leave argument array unmodified
-        let mut storage = base_values.clone();
         for _i in 0..missing_elements {
             let index = r.sample(distribution);
-            storage[index] = storage[index] + 1;
+            base_values[index] = base_values[index] + 1;
         }
         Buckets {
-            storage,
+            storage: base_values,
             desired_size,
         }
     }
