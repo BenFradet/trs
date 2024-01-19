@@ -5,6 +5,7 @@ use crate::{math::distribution::Distribution, math::series::Series, state::direc
 pub mod buckets;
 pub mod grid;
 pub mod direction;
+pub mod dimension;
 
 pub struct State {
     pub grid: Grid,
