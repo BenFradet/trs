@@ -33,29 +33,31 @@ impl Grid {
     fn shift_grid(&mut self, dim: Dimension, reverse_needed: bool) -> &mut Grid {
         let size = if dim == Dimension::Col { self.matrix.ncols() } else { self.matrix.nrows() };
         for i in 0..size {
-            let mut elements = Self::get_line(self.matrix, i, &dim);
-            if reverse_needed { elements.reverse() }
-            let (new_line, mutated) = Self::shift_line(&elements);
-            if mutated {
-                if dim == Dimension::Col {
-                    self.matrix.set_column(i, &Vector4::from_iterator(new_line));
-                } else {
-                    self.matrix.set_row(i, &RowVector4::from_iterator(new_line));
+            if let Some(mut elements) = Self::get_line(self.matrix, i, dim) {
+                if reverse_needed { elements.reverse() }
+                let (new_line, mutated) = Self::shift_line(&elements);
+                if mutated {
+                    if dim == Dimension::Col {
+                        self.matrix.set_column(i, &Vector4::from_iterator(new_line));
+                    } else {
+                        self.matrix.set_row(i, &RowVector4::from_iterator(new_line));
+                    }
                 }
             }
         }
         self
     }
 
-    // todo: mess with lifetimes to have only one slice.to_vec()
-    fn get_line(matrix: SMatrix<u32, 4, 4>, index: usize, dim: &Dimension) -> Vec<u32> {
-        if *dim == Dimension::Col {
+    fn get_line(matrix: SMatrix<u32, 4, 4>, index: usize, dim: Dimension) -> Option<Vec<u32>> {
+        if dim == Dimension::Col && index < matrix.ncols() {
             let col = matrix.column(index);
-            col.as_slice().to_vec()
-        } else {
+            Some(col.as_slice().to_vec())
+        } else if dim == Dimension::Row && index < matrix.nrows() {
             let row = matrix.row(index);
             // row views are not contiguous, hence the clone_owned
-            row.clone_owned().as_slice().to_vec()
+            Some(row.clone_owned().as_slice().to_vec())
+        } else {
+            None
         }
     }
 
@@ -109,7 +111,35 @@ mod tests {
     use super::*;
 
     #[test]
-    fn shift_should_not_mutate_if_immutable() -> () {
+    fn get_line_none_if_index_is_oob_row() -> () {
+        let m = Matrix4::repeat(1);
+        let res = Grid::get_line(m, 4, Dimension::Row);
+        assert_eq!(res, None);
+    }
+
+    #[test]
+    fn get_line_none_if_index_is_oob_col() -> () {
+        let m = Matrix4::repeat(1);
+        let res = Grid::get_line(m, 4, Dimension::Col);
+        assert_eq!(res, None);
+    }
+
+    #[test]
+    fn get_line_should_return_col_if_dim_is_col() -> () {
+        let m = Matrix4::new(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0);
+        let res = Grid::get_line(m, 0, Dimension::Col);
+        assert_eq!(res, Some(vec![1, 1, 1, 1]));
+    }
+
+    #[test]
+    fn get_line_should_return_row_if_dim_is_row() -> () {
+        let m = Matrix4::new(0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0);
+        let res = Grid::get_line(m, 1, Dimension::Row);
+        assert_eq!(res, Some(vec![1, 1, 1, 1]));
+    }
+
+    #[test]
+    fn shift_line_should_not_mutate_if_immutable() -> () {
         let array = [3, 6, 9, 12];
         let (res, mutated) = Grid::shift_line(&array);
         assert!(!mutated);
@@ -117,7 +147,7 @@ mod tests {
     }
 
     #[test]
-    fn shift_should_mutate_if_adjacent_are_same() -> () {
+    fn shift_line_should_mutate_if_adjacent_are_same() -> () {
         let array = [12, 12, 3, 6];
         let (res, mutated) = Grid::shift_line(&array);
         assert!(mutated);
@@ -125,7 +155,7 @@ mod tests {
     }
 
     #[test]
-    fn shift_should_mutate_only_once() -> () {
+    fn shift_line_should_mutate_only_once() -> () {
         let array = [12, 12, 6, 6];
         let (res, mutated) = Grid::shift_line(&array);
         assert!(mutated);
@@ -133,7 +163,7 @@ mod tests {
     }
 
     #[test]
-    fn shift_should_mutate_1_2() -> () {
+    fn shift_line_should_mutate_1_2() -> () {
         let array = [1, 2, 6, 6];
         let (res, mutated) = Grid::shift_line(&array);
         assert!(mutated);
@@ -141,7 +171,7 @@ mod tests {
     }
 
     #[test]
-    fn shift_should_mutate_2_1() -> () {
+    fn shift_line_should_mutate_2_1() -> () {
         let array = [2, 1, 6, 6];
         let (res, mutated) = Grid::shift_line(&array);
         assert!(mutated);
