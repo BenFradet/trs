@@ -33,7 +33,7 @@ impl Grid {
     fn shift_grid(&mut self, dim: Dimension, reverse_needed: bool) -> &mut Grid {
         let size = if dim == Dimension::Col { self.matrix.ncols() } else { self.matrix.nrows() };
         for i in 0..size {
-            let mut elements = self.get_line(i, &dim);
+            let mut elements = Self::get_line(self.matrix, i, &dim);
             if reverse_needed { elements.reverse() }
             let (new_line, mutated) = Self::shift_line(&elements);
             if mutated {
@@ -48,18 +48,14 @@ impl Grid {
     }
 
     // todo: mess with lifetimes to have only one slice.to_vec()
-    fn get_line(&self, index: usize, dim: &Dimension) -> Vec<u32> {
+    fn get_line(matrix: SMatrix<u32, 4, 4>, index: usize, dim: &Dimension) -> Vec<u32> {
         if *dim == Dimension::Col {
-            let col = self.matrix.column(index);
-            let slice: &[u32] = (&col).into();
-            // we need to return an owned type, instead of a borrowed reference in a local variable
-            slice.to_vec()
+            let col = matrix.column(index);
+            col.as_slice().to_vec()
         } else {
-            let row = self.matrix.row(index);
+            let row = matrix.row(index);
             // row views are not contiguous, hence the clone_owned
-            let clone = row.clone_owned();
-            let slice: &[u32] = (&clone).into();
-            slice.to_vec()
+            row.clone_owned().as_slice().to_vec()
         }
     }
 
