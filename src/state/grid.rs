@@ -6,12 +6,15 @@ use crate::state::buckets::Buckets;
 use super::{direction::Direction, dimension::Dimension};
 
 pub struct Grid {
-    // todo: remove pub
     pub matrix: SMatrix<u32, 4, 4>,
 }
 
 impl Grid {
-    pub fn new<R: Rng + ?Sized>(r: &mut R, base_values: Box<[u32]>) -> Grid {
+    fn new(matrix: SMatrix<u32, 4, 4>) -> Grid {
+        Grid { matrix }
+    }
+
+    pub fn rand<R: Rng + ?Sized>(r: &mut R, base_values: Box<[u32]>) -> Grid {
         let grid_size = 16;
         let buckets = Buckets::new(r, base_values, grid_size);
         let elements = buckets.draw(r);
@@ -22,12 +25,9 @@ impl Grid {
 
     // todo: handle next tile
     pub fn mov(&mut self, direction: Direction) -> &mut Grid {
-        match direction {
-            Direction::Up => self.shift_grid(Dimension::Col, false),
-            Direction::Down => self.shift_grid(Dimension::Col, true),
-            Direction::Left => self.shift_grid(Dimension::Row, false),
-            Direction::Right => self.shift_grid(Dimension::Row, true),
-        }
+        let reverse_needed = direction.reverse_needed();
+        let dim = direction.associated_dimension();
+        self.shift_grid(dim, reverse_needed)
     }
 
     fn shift_grid(&mut self, dim: Dimension, reverse_needed: bool) -> &mut Grid {
@@ -35,7 +35,8 @@ impl Grid {
         for i in 0..size {
             if let Some(mut elements) = Self::get_line(self.matrix, i, dim) {
                 if reverse_needed { elements.reverse() }
-                let (new_line, mutated) = Self::shift_line(&elements);
+                let (mut new_line, mutated) = Self::shift_line(&elements);
+                if reverse_needed { new_line.reverse() }
                 if mutated {
                     if dim == Dimension::Col {
                         self.matrix.set_column(i, &Vector4::from_iterator(new_line));
@@ -65,7 +66,8 @@ impl Grid {
         let (mut res, mutated) = Self::rec(elements, Vec::new(), false);
         if mutated {
             // todo next tile
-            res.insert(0, 0);
+            res.push(0);
+            //res.insert(0, 0);
             (res, mutated)
         } else {
             (res, mutated)
@@ -111,6 +113,82 @@ mod tests {
     use super::*;
 
     #[test]
+    fn shift_grid_does_one_transformation_reversed_per_col() -> () {
+        let m  = Matrix4::new(
+            1, 1, 1, 1,
+            2, 2, 2, 2,
+            1, 1, 1, 1,
+            2, 2, 2, 2);
+        let mut g = Grid::new(m);
+        let res = g.shift_grid(Dimension::Col, true);
+        let expected  = Matrix4::new(
+            0, 0, 0, 0,
+            1, 1, 1, 1,
+            2, 2, 2, 2,
+            3, 3, 3, 3);
+        assert_eq!(res.matrix, expected);
+    }
+
+    #[test]
+    fn shift_grid_does_one_transformation_reversed_per_row() -> () {
+        let m  = Matrix4::new(
+            1, 2, 1, 2,
+            1, 2, 1, 2,
+            1, 2, 1, 2,
+            1, 2, 1, 2);
+        let mut g = Grid::new(m);
+        let res = g.shift_grid(Dimension::Row, true);
+        let expected = Matrix4::new(
+            0, 1, 2, 3,
+            0, 1, 2, 3,
+            0, 1, 2, 3,
+            0, 1, 2, 3);
+        assert_eq!(res.matrix, expected);
+    }
+
+    #[test]
+    fn shift_grid_does_no_more_than_one_transformation_per_col() -> () {
+        let m  = Matrix4::new(
+            1, 1, 1, 1,
+            2, 2, 2, 2,
+            1, 1, 1, 1,
+            2, 2, 2, 2);
+        let mut g = Grid::new(m);
+        let res = g.shift_grid(Dimension::Col, false);
+        let expected = Matrix4::new(
+            3, 3, 3, 3,
+            1, 1, 1, 1,
+            2, 2, 2, 2,
+            0, 0, 0, 0);
+        assert_eq!(res.matrix, expected);
+    }
+
+    #[test]
+    fn shift_grid_does_no_more_than_one_transformation_per_row() -> () {
+        let m  = Matrix4::new(
+            1, 2, 1, 2,
+            1, 2, 1, 2,
+            1, 2, 1, 2,
+            1, 2, 1, 2);
+        let mut g = Grid::new(m);
+        let res = g.shift_grid(Dimension::Row, false);
+        let expected = Matrix4::new(
+            3, 1, 2, 0,
+            3, 1, 2, 0,
+            3, 1, 2, 0,
+            3, 1, 2, 0);
+        assert_eq!(res.matrix, expected);
+    }
+
+    #[test]
+    fn shift_grid_does_not_mutate_if_immutable() -> () {
+        let m = Matrix4::repeat(1);
+        let mut g = Grid::new(m);
+        let res = g.shift_grid(Dimension::Col, false);
+        assert_eq!(res.matrix, m);
+    }
+
+    #[test]
     fn get_line_none_if_index_is_oob_row() -> () {
         let m = Matrix4::repeat(1);
         let res = Grid::get_line(m, 4, Dimension::Row);
@@ -151,7 +229,7 @@ mod tests {
         let array = [12, 12, 3, 6];
         let (res, mutated) = Grid::shift_line(&array);
         assert!(mutated);
-        assert_eq!(res, [0, 24, 3, 6].to_vec());
+        assert_eq!(res, [24, 3, 6, 0].to_vec());
     }
 
     #[test]
@@ -159,7 +237,7 @@ mod tests {
         let array = [12, 12, 6, 6];
         let (res, mutated) = Grid::shift_line(&array);
         assert!(mutated);
-        assert_eq!(res, [0, 24, 6, 6].to_vec());
+        assert_eq!(res, [24, 6, 6, 0].to_vec());
     }
 
     #[test]
@@ -167,7 +245,7 @@ mod tests {
         let array = [1, 2, 6, 6];
         let (res, mutated) = Grid::shift_line(&array);
         assert!(mutated);
-        assert_eq!(res, [0, 3, 6, 6].to_vec());
+        assert_eq!(res, [3, 6, 6, 0].to_vec());
     }
 
     #[test]
@@ -175,6 +253,6 @@ mod tests {
         let array = [2, 1, 6, 6];
         let (res, mutated) = Grid::shift_line(&array);
         assert!(mutated);
-        assert_eq!(res, [0, 3, 6, 6].to_vec());
+        assert_eq!(res, [3, 6, 6, 0].to_vec());
     }
 }

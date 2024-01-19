@@ -17,7 +17,7 @@ pub struct State {
 impl State {
     pub fn new<R: Rng + ?Sized>(r: &mut R, base_values: Box<[u32]>) -> State {
         State {
-            grid: Grid::new(r, base_values),
+            grid: Grid::rand(r, base_values),
             next_tile: r.sample(Uniform::new(1, 3)),
             series: Series::new(1, 2, 2),
             distribution: Distribution::new(0.5),

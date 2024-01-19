@@ -1,5 +1,7 @@
 use crossterm::event::KeyCode;
 
+use super::dimension::Dimension;
+
 #[derive(Debug, PartialEq, Eq, Copy, Clone, Hash)]
 pub enum Direction {
     Up,
@@ -21,5 +23,12 @@ impl Direction {
 
     pub fn reverse_needed(self) -> bool {
         self == Direction::Down || self == Direction::Right
+    }
+
+    pub fn associated_dimension(self) -> Dimension {
+      match self {
+        Direction::Up | Direction::Down => Dimension::Col,
+        Direction::Left | Direction::Right => Dimension::Row,
+      }
     }
 }
