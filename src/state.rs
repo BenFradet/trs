@@ -1,6 +1,9 @@
 use rand::{distributions::Uniform, Rng};
 
-use crate::{math::distribution::Distribution, math::series::Series, model::direction::Direction, model::grid::Grid};
+use crate::{
+    math::distribution::Distribution, math::series::Series, model::direction::Direction,
+    model::grid::Grid,
+};
 
 pub struct State {
     pub grid: Grid,
@@ -24,7 +27,7 @@ impl State {
             Direction::Up => {
                 self.grid.matrix = self.grid.matrix.remove_row(0).insert_row(3, 0);
                 self.grid.matrix[(3, 0)] = self.next_tile;
-            },
+            }
             Direction::Down => {
                 self.grid.matrix = self.grid.matrix.remove_row(3).insert_row(0, 0);
                 self.grid.matrix[(0, 0)] = self.next_tile;
@@ -32,7 +35,7 @@ impl State {
             Direction::Left => {
                 self.grid.matrix = self.grid.matrix.remove_column(0).insert_column(3, 0);
                 self.grid.matrix[(0, 3)] = self.next_tile;
-            },
+            }
             Direction::Right => {
                 self.grid.matrix = self.grid.matrix.remove_column(3).insert_column(0, 0);
                 self.grid.matrix[(0, 0)] = self.next_tile;

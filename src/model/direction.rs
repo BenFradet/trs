@@ -17,7 +17,7 @@ impl Direction {
             KeyCode::Down | KeyCode::Char('s') => Some(Direction::Down),
             KeyCode::Left | KeyCode::Char('a') => Some(Direction::Left),
             KeyCode::Right | KeyCode::Char('d') => Some(Direction::Right),
-            _ => None
+            _ => None,
         }
     }
 
@@ -26,9 +26,9 @@ impl Direction {
     }
 
     pub fn associated_dimension(self) -> Dimension {
-      match self {
-        Direction::Up | Direction::Down => Dimension::Col,
-        Direction::Left | Direction::Right => Dimension::Row,
-      }
+        match self {
+            Direction::Up | Direction::Down => Dimension::Col,
+            Direction::Left | Direction::Right => Dimension::Row,
+        }
     }
 }

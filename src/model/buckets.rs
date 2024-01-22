@@ -1,4 +1,4 @@
-use rand::{Rng, distributions::Uniform};
+use rand::{distributions::Uniform, Rng};
 
 pub struct Buckets {
     storage: Box<[u32]>,

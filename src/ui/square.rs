@@ -1,4 +1,11 @@
-use ratatui::{layout::{Margin, Rect}, style::Color, style::Style, text::Line, widgets::{Widget, Block}, buffer::Buffer};
+use ratatui::{
+    buffer::Buffer,
+    layout::{Margin, Rect},
+    style::Color,
+    style::Style,
+    text::Line,
+    widgets::{Block, Widget},
+};
 
 #[derive(Debug, Clone)]
 pub struct Square<'a> {
@@ -73,7 +80,11 @@ impl<'a> Square<'a> {
 }
 
 impl<'a> Widget for Square<'a> {
-    fn render(mut self, mut area: ratatui::prelude::Rect, buf: &mut ratatui::prelude::Buffer) -> () {
+    fn render(
+        mut self,
+        mut area: ratatui::prelude::Rect,
+        buf: &mut ratatui::prelude::Buffer,
+    ) -> () {
         let Theme {
             background,
             text,

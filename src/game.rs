@@ -16,7 +16,7 @@ use ratatui::{
     layout::{Alignment, Constraint, Direction, Layout},
     style::Stylize,
     text::Line,
-    widgets::{Paragraph, Block, Borders},
+    widgets::{Block, Borders, Paragraph},
     Frame, Terminal,
 };
 
@@ -37,10 +37,7 @@ impl Game {
         Game {
             title: "Threes",
             instruction: "use ← 	↑ 	→ 	↓ to play",
-            state: State::new(
-                r,
-                Box::new([4, 2, 2, 2]),
-            ),
+            state: State::new(r, Box::new([4, 2, 2, 2])),
             tile_width: 14,
             tile_height: 7,
             tile_number: 4,
@@ -102,8 +99,7 @@ impl Game {
         let next_tile_block = Block::new()
             .borders(Borders::ALL)
             .title("next tile".dark_gray());
-        let next_tile_widget = Square::from_elem(self.state.next_tile)
-            .block(next_tile_block);
+        let next_tile_widget = Square::from_elem(self.state.next_tile).block(next_tile_block);
         frame.render_widget(next_tile_widget, horizontal_sep.split(main_layout[1])[0]);
 
         // game block
@@ -155,11 +151,15 @@ impl Game {
         }
     }
 
-    fn handle_key_event<R: Rng + ?Sized>(&mut self, r: &mut R, key: event::KeyEvent) -> ControlFlow<()> {
+    fn handle_key_event<R: Rng + ?Sized>(
+        &mut self,
+        r: &mut R,
+        key: event::KeyEvent,
+    ) -> ControlFlow<()> {
         if let Some(dir) = crate::model::direction::Direction::from_key_code(key.code) {
             self.state.shift(r, dir);
         } else if key.code == KeyCode::Char('q') {
-            return ControlFlow::Break(())
+            return ControlFlow::Break(());
         }
         ControlFlow::Continue(())
     }

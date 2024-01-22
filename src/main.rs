@@ -1,10 +1,10 @@
 use anyhow::Result;
 
-mod math;
 mod game;
-mod ui;
+mod math;
 mod model;
 mod state;
+mod ui;
 
 fn main() -> Result<()> {
     game::Game::run()
