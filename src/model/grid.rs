@@ -1,9 +1,7 @@
 use nalgebra::{SMatrix, Matrix4, Vector4, RowVector4};
 use rand::Rng;
 
-use crate::state::buckets::Buckets;
-
-use super::{direction::Direction, dimension::Dimension};
+use super::{direction::Direction, dimension::Dimension, buckets::Buckets};
 
 pub struct Grid {
     pub matrix: SMatrix<u32, 4, 4>,

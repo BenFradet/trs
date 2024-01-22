@@ -2,9 +2,9 @@ use anyhow::Result;
 
 mod math;
 mod game;
-mod square;
+mod ui;
+mod model;
 mod state;
-mod playfield;
 
 fn main() -> Result<()> {
     game::Game::run()
