@@ -36,12 +36,12 @@ impl Grid {
             if let Some(mut elements) = Self::get_line(self.matrix, i, dim) {
                 if reverse_needed { elements.reverse() }
                 let (mut new_line, mutated) = Self::shift_line(&elements);
-                if reverse_needed { new_line.reverse() }
                 if mutated {
+                    if reverse_needed { new_line.reverse() }
                     if dim == Dimension::Col {
-                        self.matrix.set_column(i, &Vector4::from_iterator(new_line));
+                        self.matrix.set_column(i, &Vector4::from_row_slice(&new_line));
                     } else {
-                        self.matrix.set_row(i, &RowVector4::from_iterator(new_line));
+                        self.matrix.set_row(i, &RowVector4::from_row_slice(&new_line));
                     }
                 }
             }
@@ -49,28 +49,28 @@ impl Grid {
         self
     }
 
-    fn get_line(matrix: SMatrix<u32, 4, 4>, index: usize, dim: Dimension) -> Option<Vec<u32>> {
+    fn get_line(matrix: SMatrix<u32, 4, 4>, index: usize, dim: Dimension) -> Option<Box<[u32]>> {
         if dim == Dimension::Col && index < matrix.ncols() {
             let col = matrix.column(index);
-            Some(col.as_slice().to_vec())
+            Some(col.as_slice().into())
         } else if dim == Dimension::Row && index < matrix.nrows() {
             let row = matrix.row(index);
             // row views are not contiguous, hence the clone_owned
-            Some(row.clone_owned().as_slice().to_vec())
+            Some(row.clone_owned().as_slice().into())
         } else {
             None
         }
     }
 
-    fn shift_line(elements: &[u32]) -> (Vec<u32>, bool) {
-        let (mut res, mutated) = Self::rec(elements, Vec::new(), false);
+    fn shift_line(elements: &[u32]) -> (Box<[u32]>, bool) {
+        let (mut res, mutated) = Self::rec(elements, Vec::with_capacity(elements.len()), false);
         if mutated {
             // todo next tile
             res.push(0);
             //res.insert(0, 0);
-            (res, mutated)
+            (res.into_boxed_slice(), mutated)
         } else {
-            (res, mutated)
+            (res.into_boxed_slice(), mutated)
         }
     }
 
@@ -206,14 +206,16 @@ mod tests {
     fn get_line_should_return_col_if_dim_is_col() -> () {
         let m = Matrix4::new(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0);
         let res = Grid::get_line(m, 0, Dimension::Col);
-        assert_eq!(res, Some(vec![1, 1, 1, 1]));
+        let expected: Box<[u32]> = Box::new([1, 1, 1, 1]);
+        assert_eq!(res, Some(expected));
     }
 
     #[test]
     fn get_line_should_return_row_if_dim_is_row() -> () {
         let m = Matrix4::new(0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0);
         let res = Grid::get_line(m, 1, Dimension::Row);
-        assert_eq!(res, Some(vec![1, 1, 1, 1]));
+        let expected: Box<[u32]> = Box::new([1, 1, 1, 1]);
+        assert_eq!(res, Some(expected));
     }
 
     #[test]
@@ -221,7 +223,8 @@ mod tests {
         let array = [3, 6, 9, 12];
         let (res, mutated) = Grid::shift_line(&array);
         assert!(!mutated);
-        assert_eq!(res, array.to_vec());
+        let expected: Box<[u32]> = Box::new(array);
+        assert_eq!(res, expected);
     }
 
     #[test]
@@ -229,7 +232,8 @@ mod tests {
         let array = [12, 12, 3, 6];
         let (res, mutated) = Grid::shift_line(&array);
         assert!(mutated);
-        assert_eq!(res, [24, 3, 6, 0].to_vec());
+        let expected: Box<[u32]> = Box::new([24,3,6,0]);
+        assert_eq!(res, expected);
     }
 
     #[test]
@@ -237,7 +241,8 @@ mod tests {
         let array = [12, 12, 6, 6];
         let (res, mutated) = Grid::shift_line(&array);
         assert!(mutated);
-        assert_eq!(res, [24, 6, 6, 0].to_vec());
+        let expected: Box<[u32]> = Box::new([24,6,6,0]);
+        assert_eq!(res, expected);
     }
 
     #[test]
@@ -245,7 +250,8 @@ mod tests {
         let array = [1, 2, 6, 6];
         let (res, mutated) = Grid::shift_line(&array);
         assert!(mutated);
-        assert_eq!(res, [3, 6, 6, 0].to_vec());
+        let expected: Box<[u32]> = Box::new([3,6,6,0]);
+        assert_eq!(res, expected);
     }
 
     #[test]
@@ -253,6 +259,7 @@ mod tests {
         let array = [2, 1, 6, 6];
         let (res, mutated) = Grid::shift_line(&array);
         assert!(mutated);
-        assert_eq!(res, [3, 6, 6, 0].to_vec());
+        let expected: Box<[u32]> = Box::new([3,6,6,0]);
+        assert_eq!(res, expected);
     }
 }
