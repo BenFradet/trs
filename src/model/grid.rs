@@ -22,13 +22,14 @@ impl Grid {
     }
 
     // todo: handle next tile
-    pub fn mov(&mut self, direction: Direction) -> &mut Grid {
+    pub fn mov(&mut self, direction: Direction, next_tile: u32) -> &mut Grid {
         let reverse_needed = direction.reverse_needed();
         let dim = direction.associated_dimension();
-        self.shift_grid(dim, reverse_needed)
+        self.shift_grid(dim, next_tile, reverse_needed)
     }
 
-    fn shift_grid(&mut self, dim: Dimension, reverse_needed: bool) -> &mut Grid {
+    fn shift_grid(&mut self, dim: Dimension, next_tile: u32, reverse_needed: bool) -> &mut Grid {
+        let mut next_tile_inserted = false;
         let size = if dim == Dimension::Col {
             self.matrix.ncols()
         } else {
@@ -39,8 +40,11 @@ impl Grid {
                 if reverse_needed {
                     elements.reverse()
                 }
-                let (mut new_line, mutated) = Self::shift_line(&elements);
+                let (mut new_line, mutated, combined) = Self::shift_line(&elements, next_tile, next_tile_inserted);
                 if mutated {
+                    if !next_tile_inserted && combined {
+                        next_tile_inserted = true;
+                    }
                     if reverse_needed {
                         new_line.reverse()
                     }
@@ -70,48 +74,56 @@ impl Grid {
         }
     }
 
-    fn shift_line(elements: &[u32]) -> (Box<[u32]>, bool) {
-        let (mut res, mutated) = Self::rec(elements, Vec::with_capacity(elements.len()), false);
-        if mutated {
-            // todo next tile
-            res.push(0);
-            //res.insert(0, 0);
-            (res.into_boxed_slice(), mutated)
+    fn shift_line(elements: &[u32], next_tile: u32, next_tile_inserted: bool) -> (Box<[u32]>, bool, bool) {
+        let (mut res, mutated, combined) = Self::rec(elements, Vec::with_capacity(elements.len()), false, false);
+        if combined {
+            if next_tile_inserted {
+                res.push(0);
+            } else {
+                res.push(next_tile);
+            }
+            (res.into_boxed_slice(), mutated, combined)
         } else {
-            (res.into_boxed_slice(), mutated)
+            (res.into_boxed_slice(), mutated, combined)
         }
     }
 
     // todo: too much game-specific logic, need to abstract things
-    fn rec(elements: &[u32], mut acc: Vec<u32>, mutated: bool) -> (Vec<u32>, bool) {
-        if !mutated {
+    fn rec(elements: &[u32], mut acc: Vec<u32>, mutated: bool, combined: bool) -> (Vec<u32>, bool, bool) {
+        if !combined {
             match elements {
                 [h1, h2, t @ ..] => {
                     if h1 == h2 && h1 > &2 {
                         acc.push(h1 * 2);
-                        Self::rec(t, acc, true)
+                        Self::rec(t, acc, true, true)
                     } else if h1 + h2 == 3 && h1 < &3 && h2 < &3 {
                         acc.push(h1 + h2);
-                        Self::rec(t, acc, true)
+                        Self::rec(t, acc, true, true)
+                    } else if h1 == &0 {
+                        acc.push(*h2);
+                        // find a way to avoid the vec allocation
+                        let mut es: Vec<u32> = t.to_vec();
+                        es.insert(0, 0);
+                        Self::rec(es.as_slice(), acc, true, combined)
                     } else {
                         acc.push(*h1);
-                        Self::rec(&elements[1..], acc, mutated)
+                        Self::rec(&elements[1..], acc, mutated, combined)
                     }
                 }
                 [h, t @ ..] => {
                     acc.push(*h);
-                    Self::rec(t, acc, mutated)
+                    Self::rec(t, acc, mutated, combined)
                 }
-                _ => (acc, mutated),
+                _ => (acc, mutated, combined),
             }
         } else {
             // todo: find a way to short-circuit
             match elements {
                 [h, t @ ..] => {
                     acc.push(*h);
-                    Self::rec(t, acc, mutated)
+                    Self::rec(t, acc, mutated, combined)
                 }
-                _ => (acc, mutated),
+                _ => (acc, mutated, combined),
             }
         }
     }
@@ -125,8 +137,8 @@ mod tests {
     fn shift_grid_does_one_transformation_reversed_per_col() -> () {
         let m = Matrix4::new(1, 1, 1, 1, 2, 2, 2, 2, 1, 1, 1, 1, 2, 2, 2, 2);
         let mut g = Grid::new(m);
-        let res = g.shift_grid(Dimension::Col, true);
-        let expected = Matrix4::new(0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3);
+        let res = g.shift_grid(Dimension::Col, 12, true);
+        let expected = Matrix4::new(12, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3);
         assert_eq!(res.matrix, expected);
     }
 
@@ -134,8 +146,8 @@ mod tests {
     fn shift_grid_does_one_transformation_reversed_per_row() -> () {
         let m = Matrix4::new(1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2);
         let mut g = Grid::new(m);
-        let res = g.shift_grid(Dimension::Row, true);
-        let expected = Matrix4::new(0, 1, 2, 3, 0, 1, 2, 3, 0, 1, 2, 3, 0, 1, 2, 3);
+        let res = g.shift_grid(Dimension::Row, 12, true);
+        let expected = Matrix4::new(12, 1, 2, 3, 0, 1, 2, 3, 0, 1, 2, 3, 0, 1, 2, 3);
         assert_eq!(res.matrix, expected);
     }
 
@@ -143,8 +155,8 @@ mod tests {
     fn shift_grid_does_no_more_than_one_transformation_per_col() -> () {
         let m = Matrix4::new(1, 1, 1, 1, 2, 2, 2, 2, 1, 1, 1, 1, 2, 2, 2, 2);
         let mut g = Grid::new(m);
-        let res = g.shift_grid(Dimension::Col, false);
-        let expected = Matrix4::new(3, 3, 3, 3, 1, 1, 1, 1, 2, 2, 2, 2, 0, 0, 0, 0);
+        let res = g.shift_grid(Dimension::Col, 12, false);
+        let expected = Matrix4::new(3, 3, 3, 3, 1, 1, 1, 1, 2, 2, 2, 2, 12, 0, 0, 0);
         assert_eq!(res.matrix, expected);
     }
 
@@ -152,8 +164,8 @@ mod tests {
     fn shift_grid_does_no_more_than_one_transformation_per_row() -> () {
         let m = Matrix4::new(1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2);
         let mut g = Grid::new(m);
-        let res = g.shift_grid(Dimension::Row, false);
-        let expected = Matrix4::new(3, 1, 2, 0, 3, 1, 2, 0, 3, 1, 2, 0, 3, 1, 2, 0);
+        let res = g.shift_grid(Dimension::Row, 12, false);
+        let expected = Matrix4::new(3, 1, 2, 12, 3, 1, 2, 0, 3, 1, 2, 0, 3, 1, 2, 0);
         assert_eq!(res.matrix, expected);
     }
 
@@ -161,7 +173,7 @@ mod tests {
     fn shift_grid_does_not_mutate_if_immutable() -> () {
         let m = Matrix4::repeat(1);
         let mut g = Grid::new(m);
-        let res = g.shift_grid(Dimension::Col, false);
+        let res = g.shift_grid(Dimension::Col, 12,false);
         assert_eq!(res.matrix, m);
     }
 
@@ -196,46 +208,61 @@ mod tests {
     }
 
     #[test]
+    fn shift_line_mutate_zeros() -> () {
+        let array = [1, 0, 2, 2];
+        let (res, mutated, combined) = Grid::shift_line(&array, 12, true);
+        assert!(mutated);
+        assert!(!combined);
+        let expected: Box<[u32]> = Box::new([1, 2, 2, 0]);
+        assert_eq!(res, expected);
+    }
+
+    #[test]
     fn shift_line_should_not_mutate_if_immutable() -> () {
         let array = [3, 6, 9, 12];
-        let (res, mutated) = Grid::shift_line(&array);
+        let (res, mutated, combined) = Grid::shift_line(&array, 12, true);
         assert!(!mutated);
+        assert!(!combined);
         let expected: Box<[u32]> = Box::new(array);
         assert_eq!(res, expected);
     }
 
     #[test]
-    fn shift_line_should_mutate_if_adjacent_are_same() -> () {
+    fn shift_line_should_combine_if_adjacent_are_same() -> () {
         let array = [12, 12, 3, 6];
-        let (res, mutated) = Grid::shift_line(&array);
+        let (res, mutated, combined) = Grid::shift_line(&array, 12, true);
         assert!(mutated);
+        assert!(combined);
         let expected: Box<[u32]> = Box::new([24, 3, 6, 0]);
         assert_eq!(res, expected);
     }
 
     #[test]
-    fn shift_line_should_mutate_only_once() -> () {
+    fn shift_line_should_combine_only_once() -> () {
         let array = [12, 12, 6, 6];
-        let (res, mutated) = Grid::shift_line(&array);
+        let (res, mutated, combined) = Grid::shift_line(&array, 12, true);
         assert!(mutated);
+        assert!(combined);
         let expected: Box<[u32]> = Box::new([24, 6, 6, 0]);
         assert_eq!(res, expected);
     }
 
     #[test]
-    fn shift_line_should_mutate_1_2() -> () {
+    fn shift_line_should_combine_1_2() -> () {
         let array = [1, 2, 6, 6];
-        let (res, mutated) = Grid::shift_line(&array);
+        let (res, mutated, combined) = Grid::shift_line(&array, 12, true);
         assert!(mutated);
+        assert!(combined);
         let expected: Box<[u32]> = Box::new([3, 6, 6, 0]);
         assert_eq!(res, expected);
     }
 
     #[test]
-    fn shift_line_should_mutate_2_1() -> () {
+    fn shift_line_should_combine_2_1() -> () {
         let array = [2, 1, 6, 6];
-        let (res, mutated) = Grid::shift_line(&array);
+        let (res, mutated, combined) = Grid::shift_line(&array, 12, true);
         assert!(mutated);
+        assert!(combined);
         let expected: Box<[u32]> = Box::new([3, 6, 6, 0]);
         assert_eq!(res, expected);
     }

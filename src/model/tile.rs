@@ -2,7 +2,7 @@ use rand::{distributions::Uniform, Rng};
 
 use crate::math::{distribution::Distribution, series::Series};
 
-struct Tile {
+pub struct Tile {
     value: u32,
     series: Series,
     distribution: Distribution,
@@ -21,7 +21,7 @@ impl Tile {
         self.value
     }
 
-    fn next<R: Rng + ?Sized>(&mut self, r: &mut R, max: u32) -> u32 {
+    pub fn next<R: Rng + ?Sized>(&mut self, r: &mut R, max: u32) -> u32 {
         let rank = self.rank(r, max);
         self.value = self.series.u_n(rank);
         self.value

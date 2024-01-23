@@ -23,8 +23,8 @@ pub struct Theme {
 
 pub const EMPTY_THEME: Theme = Theme {
     text: Color::Black,
-    background: Color::Rgb(209, 230, 224),
-    shadow: Color::Rgb(181, 219, 219),
+    background: Color::Rgb(109, 130, 124),
+    shadow: Color::Rgb(81, 119, 119),
 };
 pub const ONE_THEME: Theme = Theme {
     text: Color::Black,

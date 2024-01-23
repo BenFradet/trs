@@ -99,7 +99,7 @@ impl Game {
         let next_tile_block = Block::new()
             .borders(Borders::ALL)
             .title("next tile".dark_gray());
-        let next_tile_widget = Square::from_elem(self.state.next_tile).block(next_tile_block);
+        let next_tile_widget = Square::from_elem(self.state.tile.current()).block(next_tile_block);
         frame.render_widget(next_tile_widget, horizontal_sep.split(main_layout[1])[0]);
 
         // game block
