@@ -29,7 +29,7 @@ impl Buckets {
 
     // should not consume self
     pub fn draw<R: Rng + ?Sized>(&self, r: &mut R) -> Vec<u32> {
-        let mut res = Vec::new();
+        let mut res = Vec::with_capacity(self.desired_size);
         let distribution = Uniform::new(0, self.storage.len());
         // clone to not mut self
         let mut st = self.storage.clone();
