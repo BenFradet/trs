@@ -31,4 +31,13 @@ impl Direction {
             Direction::Left | Direction::Right => Dimension::Row,
         }
     }
+
+    pub fn index(self) -> usize {
+        match self {
+            Direction::Up => 3,
+            Direction::Down => 0,
+            Direction::Left => 3,
+            Direction::Right => 0,
+        }
+    }
 }

@@ -1,5 +1,5 @@
 use nalgebra::{Matrix4, RowVector4, SMatrix, Vector4};
-use rand::Rng;
+use rand::{distributions::Uniform, Rng};
 
 use super::{buckets::Buckets, dimension::Dimension, direction::Direction};
 
@@ -17,13 +17,15 @@ impl Grid {
         }
     }
 
-    pub fn mov(&mut self, direction: Direction, next_tile: u32) -> &mut Grid {
-        let reverse_needed = direction.reverse_needed();
-        let dim = direction.associated_dimension();
-        self.shift_grid(dim, next_tile, reverse_needed)
-    }
+    pub fn shift<R: Rng + ?Sized>(
+        &mut self,
+        r: &mut R,
+        dir: Direction,
+        next_tile: u32,
+    ) -> (&mut Grid, bool) {
+        let reverse_needed = dir.reverse_needed();
+        let dim = dir.associated_dimension();
 
-    fn shift_grid(&mut self, dim: Dimension, next_tile: u32, reverse_needed: bool) -> &mut Grid {
         let mut next_tile_inserted = false;
         let size = if dim == Dimension::Col {
             self.matrix.ncols()
@@ -54,9 +56,53 @@ impl Grid {
                 }
             }
         }
-        // todo: insert next_tile if not yet inserted in periphery according to dim
+        if !next_tile_inserted {
+            let idx = dir.index();
+            if let Some(line_with_next_tile) =
+                Self::force_insert_next_tile(r, self.matrix, idx, dim, next_tile)
+            {
+                if dim == Dimension::Col {
+                    self.matrix
+                        .set_column(idx, &Vector4::from_row_slice(&line_with_next_tile));
+                } else {
+                    self.matrix
+                        .set_row(idx, &RowVector4::from_row_slice(&line_with_next_tile));
+                }
+                next_tile_inserted = true;
+            }
+        }
         // todo: send back global_mutated, if false => game over
-        self
+        (self, next_tile_inserted)
+    }
+
+    // if there was no combination, replace a 0 with next tile
+    fn force_insert_next_tile<R: Rng + ?Sized>(
+        r: &mut R,
+        matrix: SMatrix<u32, 4, 4>,
+        index: usize,
+        dim: Dimension,
+        next_tile: u32,
+    ) -> Option<Box<[u32]>> {
+        match Self::get_line(matrix, index, dim) {
+            Some(slice) => {
+                let mut zeros = Vec::with_capacity(slice.len());
+                for i in 0..slice.len() {
+                    if slice[i] == 0 {
+                        zeros.push(i);
+                    }
+                }
+                if zeros.len() == 0 {
+                    None
+                } else {
+                    let i = r.sample(Uniform::new(0, zeros.len()));
+                    let idx = zeros[i];
+                    let mut values = slice.to_vec();
+                    let _ = std::mem::replace(&mut values[idx], next_tile);
+                    Some(values.as_slice().into())
+                }
+            }
+            None => None,
+        }
     }
 
     fn get_line(matrix: SMatrix<u32, 4, 4>, index: usize, dim: Dimension) -> Option<Box<[u32]>> {
@@ -139,6 +185,8 @@ impl Grid {
 
 #[cfg(test)]
 mod tests {
+    use rand::rngs::OsRng;
+
     use super::*;
 
     fn new_grid(matrix: SMatrix<u32, 4, 4>) -> Grid {
@@ -146,46 +194,113 @@ mod tests {
     }
 
     #[test]
+    fn force_insert_next_tile_some_if_zero_found_up() -> () {
+        let mut r = OsRng;
+        let mut m = Matrix4::repeat(1);
+        m[(3, 3)] = 0;
+        let res = Grid::force_insert_next_tile(&mut r, m, 3, Dimension::Col, 12);
+        let exp: Box<[u32]> = Box::new([1, 1, 1, 12]);
+        assert_eq!(res, Some(exp));
+    }
+
+    #[test]
+    fn force_insert_next_tile_some_if_zero_found_down() -> () {
+        let mut r = OsRng;
+        let mut m = Matrix4::repeat(1);
+        m[(3, 0)] = 0;
+        let res = Grid::force_insert_next_tile(&mut r, m, 0, Dimension::Col, 12);
+        let exp: Box<[u32]> = Box::new([1, 1, 1, 12]);
+        assert_eq!(res, Some(exp));
+    }
+
+    #[test]
+    fn force_insert_next_tile_some_if_zero_found_left() -> () {
+        let mut r = OsRng;
+        let mut m = Matrix4::repeat(1);
+        m[(0, 3)] = 0;
+        let res = Grid::force_insert_next_tile(&mut r, m, 0, Dimension::Row, 12);
+        let exp: Box<[u32]> = Box::new([1, 1, 1, 12]);
+        assert_eq!(res, Some(exp));
+    }
+
+    #[test]
+    fn force_insert_next_tile_some_if_zero_found_right() -> () {
+        let mut r = OsRng;
+        let mut m = Matrix4::repeat(1);
+        m[(3, 3)] = 0;
+        let res = Grid::force_insert_next_tile(&mut r, m, 3, Dimension::Row, 12);
+        let exp: Box<[u32]> = Box::new([1, 1, 1, 12]);
+        assert_eq!(res, Some(exp));
+    }
+
+    #[test]
+    fn force_insert_next_tile_none_if_idx_out_of_bounds() -> () {
+        let mut r = OsRng;
+        let m = Matrix4::repeat(1);
+        let res = Grid::force_insert_next_tile(&mut r, m, 4, Dimension::Col, 12);
+        assert_eq!(res, None);
+    }
+
+    #[test]
+    fn force_insert_next_tile_none_if_no_zeros() -> () {
+        let mut r = OsRng;
+        let m = Matrix4::repeat(1);
+        let res_up = Grid::force_insert_next_tile(&mut r, m, 3, Dimension::Col, 12);
+        assert_eq!(res_up, None);
+        let res_down = Grid::force_insert_next_tile(&mut r, m, 0, Dimension::Col, 12);
+        assert_eq!(res_down, None);
+        let res_left = Grid::force_insert_next_tile(&mut r, m, 3, Dimension::Row, 12);
+        assert_eq!(res_left, None);
+        let res_right = Grid::force_insert_next_tile(&mut r, m, 0, Dimension::Row, 12);
+        assert_eq!(res_right, None);
+    }
+
+    #[test]
     fn shift_grid_does_one_transformation_reversed_per_col() -> () {
+        let mut r = OsRng;
         let m = Matrix4::new(1, 1, 1, 1, 2, 2, 2, 2, 1, 1, 1, 1, 2, 2, 2, 2);
         let mut g = new_grid(m);
-        let res = g.shift_grid(Dimension::Col, 12, true);
+        let (res, _) = g.shift(&mut r, Direction::Down, 12);
         let expected = Matrix4::new(12, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3);
         assert_eq!(res.matrix, expected);
     }
 
     #[test]
     fn shift_grid_does_one_transformation_reversed_per_row() -> () {
+        let mut r = OsRng;
         let m = Matrix4::new(1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2);
         let mut g = new_grid(m);
-        let res = g.shift_grid(Dimension::Row, 12, true);
+        let (res, _) = g.shift(&mut r, Direction::Right, 12);
         let expected = Matrix4::new(12, 1, 2, 3, 0, 1, 2, 3, 0, 1, 2, 3, 0, 1, 2, 3);
         assert_eq!(res.matrix, expected);
     }
 
     #[test]
     fn shift_grid_does_no_more_than_one_transformation_per_col() -> () {
+        let mut r = OsRng;
         let m = Matrix4::new(1, 1, 1, 1, 2, 2, 2, 2, 1, 1, 1, 1, 2, 2, 2, 2);
         let mut g = new_grid(m);
-        let res = g.shift_grid(Dimension::Col, 12, false);
+        let (res, _) = g.shift(&mut r, Direction::Up, 12);
         let expected = Matrix4::new(3, 3, 3, 3, 1, 1, 1, 1, 2, 2, 2, 2, 12, 0, 0, 0);
         assert_eq!(res.matrix, expected);
     }
 
     #[test]
     fn shift_grid_does_no_more_than_one_transformation_per_row() -> () {
+        let mut r = OsRng;
         let m = Matrix4::new(1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2);
         let mut g = new_grid(m);
-        let res = g.shift_grid(Dimension::Row, 12, false);
+        let (res, _) = g.shift(&mut r, Direction::Left, 12);
         let expected = Matrix4::new(3, 1, 2, 12, 3, 1, 2, 0, 3, 1, 2, 0, 3, 1, 2, 0);
         assert_eq!(res.matrix, expected);
     }
 
     #[test]
     fn shift_grid_does_not_mutate_if_immutable() -> () {
+        let mut r = OsRng;
         let m = Matrix4::repeat(1);
         let mut g = new_grid(m);
-        let res = g.shift_grid(Dimension::Col, 12, false);
+        let (res, _) = g.shift(&mut r, Direction::Up, 12);
         assert_eq!(res.matrix, m);
     }
 

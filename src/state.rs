@@ -17,7 +17,7 @@ impl State {
 
     pub fn shift<R: Rng + ?Sized>(&mut self, r: &mut R, direction: Direction) -> &mut State {
         let new_tile = self.tile.current();
-        self.grid.mov(direction, new_tile);
+        self.grid.shift(r, direction, new_tile);
         // todo: if not mutated don't generate next tile
         let max = self.grid.matrix.max();
         self.tile.next(r, max);
