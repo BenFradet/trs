@@ -8,10 +8,6 @@ pub struct Grid {
 }
 
 impl Grid {
-    fn new(matrix: SMatrix<u32, 4, 4>) -> Grid {
-        Grid { matrix }
-    }
-
     pub fn rand<R: Rng + ?Sized>(r: &mut R, base_values: Box<[u32]>) -> Grid {
         let grid_size = 16;
         let buckets = Buckets::new(r, base_values, grid_size);
@@ -133,10 +129,14 @@ impl Grid {
 mod tests {
     use super::*;
 
+    fn new_grid(matrix: SMatrix<u32, 4, 4>) -> Grid {
+        Grid { matrix }
+    }
+
     #[test]
     fn shift_grid_does_one_transformation_reversed_per_col() -> () {
         let m = Matrix4::new(1, 1, 1, 1, 2, 2, 2, 2, 1, 1, 1, 1, 2, 2, 2, 2);
-        let mut g = Grid::new(m);
+        let mut g = new_grid(m);
         let res = g.shift_grid(Dimension::Col, 12, true);
         let expected = Matrix4::new(12, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3);
         assert_eq!(res.matrix, expected);
@@ -145,7 +145,7 @@ mod tests {
     #[test]
     fn shift_grid_does_one_transformation_reversed_per_row() -> () {
         let m = Matrix4::new(1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2);
-        let mut g = Grid::new(m);
+        let mut g = new_grid(m);
         let res = g.shift_grid(Dimension::Row, 12, true);
         let expected = Matrix4::new(12, 1, 2, 3, 0, 1, 2, 3, 0, 1, 2, 3, 0, 1, 2, 3);
         assert_eq!(res.matrix, expected);
@@ -154,7 +154,7 @@ mod tests {
     #[test]
     fn shift_grid_does_no_more_than_one_transformation_per_col() -> () {
         let m = Matrix4::new(1, 1, 1, 1, 2, 2, 2, 2, 1, 1, 1, 1, 2, 2, 2, 2);
-        let mut g = Grid::new(m);
+        let mut g = new_grid(m);
         let res = g.shift_grid(Dimension::Col, 12, false);
         let expected = Matrix4::new(3, 3, 3, 3, 1, 1, 1, 1, 2, 2, 2, 2, 12, 0, 0, 0);
         assert_eq!(res.matrix, expected);
@@ -163,7 +163,7 @@ mod tests {
     #[test]
     fn shift_grid_does_no_more_than_one_transformation_per_row() -> () {
         let m = Matrix4::new(1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2);
-        let mut g = Grid::new(m);
+        let mut g = new_grid(m);
         let res = g.shift_grid(Dimension::Row, 12, false);
         let expected = Matrix4::new(3, 1, 2, 12, 3, 1, 2, 0, 3, 1, 2, 0, 3, 1, 2, 0);
         assert_eq!(res.matrix, expected);
@@ -172,7 +172,7 @@ mod tests {
     #[test]
     fn shift_grid_does_not_mutate_if_immutable() -> () {
         let m = Matrix4::repeat(1);
-        let mut g = Grid::new(m);
+        let mut g = new_grid(m);
         let res = g.shift_grid(Dimension::Col, 12,false);
         assert_eq!(res.matrix, m);
     }
