@@ -1,9 +1,6 @@
 use rand::Rng;
 
-use crate::{
-    model::direction::Direction,
-    model::grid::Grid, model::tile::Tile,
-};
+use crate::{model::direction::Direction, model::grid::Grid, model::tile::Tile};
 
 pub struct State {
     pub grid: Grid,
@@ -21,6 +18,7 @@ impl State {
     pub fn shift<R: Rng + ?Sized>(&mut self, r: &mut R, direction: Direction) -> &mut State {
         let new_tile = self.tile.current();
         self.grid.mov(direction, new_tile);
+        // todo: if not mutated don't generate next tile
         let max = self.grid.matrix.max();
         self.tile.next(r, max);
         self

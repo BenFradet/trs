@@ -17,7 +17,6 @@ impl Grid {
         }
     }
 
-    // todo: handle next tile
     pub fn mov(&mut self, direction: Direction, next_tile: u32) -> &mut Grid {
         let reverse_needed = direction.reverse_needed();
         let dim = direction.associated_dimension();
@@ -36,7 +35,8 @@ impl Grid {
                 if reverse_needed {
                     elements.reverse()
                 }
-                let (mut new_line, mutated, combined) = Self::shift_line(&elements, next_tile, next_tile_inserted);
+                let (mut new_line, mutated, combined) =
+                    Self::shift_line(&elements, next_tile, next_tile_inserted);
                 if mutated {
                     if !next_tile_inserted && combined {
                         next_tile_inserted = true;
@@ -54,6 +54,8 @@ impl Grid {
                 }
             }
         }
+        // todo: insert next_tile if not yet inserted in periphery according to dim
+        // todo: send back global_mutated, if false => game over
         self
     }
 
@@ -70,8 +72,13 @@ impl Grid {
         }
     }
 
-    fn shift_line(elements: &[u32], next_tile: u32, next_tile_inserted: bool) -> (Box<[u32]>, bool, bool) {
-        let (mut res, mutated, combined) = Self::rec(elements, Vec::with_capacity(elements.len()), false, false);
+    fn shift_line(
+        elements: &[u32],
+        next_tile: u32,
+        next_tile_inserted: bool,
+    ) -> (Box<[u32]>, bool, bool) {
+        let (mut res, mutated, combined) =
+            Self::rec(elements, Vec::with_capacity(elements.len()), false, false);
         if combined {
             if next_tile_inserted {
                 res.push(0);
@@ -85,7 +92,12 @@ impl Grid {
     }
 
     // todo: too much game-specific logic, need to abstract things
-    fn rec(elements: &[u32], mut acc: Vec<u32>, mutated: bool, combined: bool) -> (Vec<u32>, bool, bool) {
+    fn rec(
+        elements: &[u32],
+        mut acc: Vec<u32>,
+        mutated: bool,
+        combined: bool,
+    ) -> (Vec<u32>, bool, bool) {
         if !combined {
             match elements {
                 [h1, h2, t @ ..] => {
@@ -173,7 +185,7 @@ mod tests {
     fn shift_grid_does_not_mutate_if_immutable() -> () {
         let m = Matrix4::repeat(1);
         let mut g = new_grid(m);
-        let res = g.shift_grid(Dimension::Col, 12,false);
+        let res = g.shift_grid(Dimension::Col, 12, false);
         assert_eq!(res.matrix, m);
     }
 
