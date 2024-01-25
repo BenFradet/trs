@@ -1,6 +1,8 @@
 use nalgebra::{Matrix4, RowVector4, SMatrix, Vector4};
 use rand::{distributions::Uniform, Rng};
 
+use crate::utils::matrix_any::MatrixAny;
+
 use super::{buckets::Buckets, dimension::Dimension, direction::Direction};
 
 pub struct Grid {
@@ -22,11 +24,12 @@ impl Grid {
         r: &mut R,
         dir: Direction,
         next_tile: u32,
-    ) -> (&mut Grid, bool) {
+    ) -> (&mut Grid, bool, bool) {
         let reverse_needed = dir.reverse_needed();
         let dim = dir.associated_dimension();
 
         let mut next_tile_inserted = false;
+
         let size = if dim == Dimension::Col {
             self.matrix.ncols()
         } else {
@@ -71,8 +74,19 @@ impl Grid {
                 next_tile_inserted = true;
             }
         }
-        // todo: send back global_mutated, if false => game over
-        (self, next_tile_inserted)
+        if next_tile_inserted {
+            (self, next_tile_inserted, false)
+        } else {
+            let game_over = self.game_over();
+            (self, next_tile_inserted, game_over)
+        }
+    }
+
+    fn game_over(&self) -> bool {
+        // mutable => contains 0
+        let mutable = self.matrix.iter().any(|e| *e == 0);
+        // combinable
+        !mutable && !self.matrix.any_col(Self::combinable) && !self.matrix.any_row(Self::combinable)
     }
 
     // if there was no combination, replace a 0 with next tile
@@ -123,8 +137,50 @@ impl Grid {
         next_tile: u32,
         next_tile_inserted: bool,
     ) -> (Box<[u32]>, bool, bool) {
+        fn inner(
+            elements: &[u32],
+            mut acc: Vec<u32>,
+            mutated: bool,
+            combined: bool,
+            combiner: &dyn Fn(u32, u32) -> Option<u32>,
+        ) -> (Vec<u32>, bool, bool) {
+            if !combined {
+                match elements {
+                    [h1, h2, t @ ..] => {
+                        if let Some(value) = combiner(*h1, *h2) {
+                            acc.push(value);
+                            inner(t, acc, true, true, combiner)
+                        } else if h1 == &0 {
+                            acc.push(*h2);
+                            // todo: find a way to avoid the vec allocation
+                            let mut es: Vec<u32> = t.to_vec();
+                            es.insert(0, 0);
+                            inner(es.as_slice(), acc, true, combined, combiner)
+                        } else {
+                            acc.push(*h1);
+                            inner(&elements[1..], acc, mutated, combined, combiner)
+                        }
+                    }
+                    [h, t @ ..] => {
+                        acc.push(*h);
+                        inner(t, acc, mutated, combined, combiner)
+                    }
+                    _ => (acc, mutated, combined),
+                }
+            } else {
+                // todo: find a way to short-circuit
+                match elements {
+                    [h, t @ ..] => {
+                        acc.push(*h);
+                        inner(t, acc, mutated, combined, combiner)
+                    }
+                    _ => (acc, mutated, combined),
+                }
+            }
+        }
+
         let (mut res, mutated, combined) =
-            Self::rec(elements, Vec::with_capacity(elements.len()), false, false);
+            inner(elements, Vec::with_capacity(elements.len()), false, false, &Self::combiner);
         if combined {
             if next_tile_inserted {
                 res.push(0);
@@ -137,49 +193,34 @@ impl Grid {
         }
     }
 
-    // todo: too much game-specific logic, need to abstract things
-    fn rec(
-        elements: &[u32],
-        mut acc: Vec<u32>,
-        mutated: bool,
-        combined: bool,
-    ) -> (Vec<u32>, bool, bool) {
-        if !combined {
-            match elements {
-                [h1, h2, t @ ..] => {
-                    if h1 == h2 && h1 > &2 {
-                        acc.push(h1 * 2);
-                        Self::rec(t, acc, true, true)
-                    } else if h1 + h2 == 3 && h1 < &3 && h2 < &3 {
-                        acc.push(h1 + h2);
-                        Self::rec(t, acc, true, true)
-                    } else if h1 == &0 {
-                        acc.push(*h2);
-                        // find a way to avoid the vec allocation
-                        let mut es: Vec<u32> = t.to_vec();
-                        es.insert(0, 0);
-                        Self::rec(es.as_slice(), acc, true, combined)
-                    } else {
-                        acc.push(*h1);
-                        Self::rec(&elements[1..], acc, mutated, combined)
-                    }
-                }
-                [h, t @ ..] => {
-                    acc.push(*h);
-                    Self::rec(t, acc, mutated, combined)
-                }
-                _ => (acc, mutated, combined),
-            }
+
+    fn combiner(h1: u32, h2: u32) -> Option<u32> {
+        if h1 == h2 && h1 > 2 {
+            Some(h1 * 2)
+        } else if h1 + h2 == 3 && h1 < 3 && h2 < 3 {
+            Some(h1 + h2)
         } else {
-            // todo: find a way to short-circuit
-            match elements {
-                [h, t @ ..] => {
-                    acc.push(*h);
-                    Self::rec(t, acc, mutated, combined)
+            None
+        }
+    }
+
+    fn combinable(elements: &[u32]) -> bool {
+        fn inner(elements: &[u32], acc: bool, f: &dyn Fn(u32, u32) -> bool) -> bool {
+            if acc {
+                acc
+            } else {
+                match elements {
+                    [h1, h2, _] =>
+                        if f(*h1, *h2) {
+                            true
+                        } else {
+                            inner(&elements[1..], acc, f)
+                        }
+                    _ => false,
                 }
-                _ => (acc, mutated, combined),
             }
         }
+        inner(elements, false, &|h1, h2| Self::combiner(h1, h2).is_some())
     }
 }
 
@@ -260,7 +301,7 @@ mod tests {
         let mut r = OsRng;
         let m = Matrix4::new(1, 1, 1, 1, 2, 2, 2, 2, 1, 1, 1, 1, 2, 2, 2, 2);
         let mut g = new_grid(m);
-        let (res, _) = g.shift(&mut r, Direction::Down, 12);
+        let (res, _, _) = g.shift(&mut r, Direction::Down, 12);
         let expected = Matrix4::new(12, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3);
         assert_eq!(res.matrix, expected);
     }
@@ -270,7 +311,7 @@ mod tests {
         let mut r = OsRng;
         let m = Matrix4::new(1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2);
         let mut g = new_grid(m);
-        let (res, _) = g.shift(&mut r, Direction::Right, 12);
+        let (res, _, _) = g.shift(&mut r, Direction::Right, 12);
         let expected = Matrix4::new(12, 1, 2, 3, 0, 1, 2, 3, 0, 1, 2, 3, 0, 1, 2, 3);
         assert_eq!(res.matrix, expected);
     }
@@ -280,7 +321,7 @@ mod tests {
         let mut r = OsRng;
         let m = Matrix4::new(1, 1, 1, 1, 2, 2, 2, 2, 1, 1, 1, 1, 2, 2, 2, 2);
         let mut g = new_grid(m);
-        let (res, _) = g.shift(&mut r, Direction::Up, 12);
+        let (res, _, _) = g.shift(&mut r, Direction::Up, 12);
         let expected = Matrix4::new(3, 3, 3, 3, 1, 1, 1, 1, 2, 2, 2, 2, 12, 0, 0, 0);
         assert_eq!(res.matrix, expected);
     }
@@ -290,7 +331,7 @@ mod tests {
         let mut r = OsRng;
         let m = Matrix4::new(1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2);
         let mut g = new_grid(m);
-        let (res, _) = g.shift(&mut r, Direction::Left, 12);
+        let (res, _, _) = g.shift(&mut r, Direction::Left, 12);
         let expected = Matrix4::new(3, 1, 2, 12, 3, 1, 2, 0, 3, 1, 2, 0, 3, 1, 2, 0);
         assert_eq!(res.matrix, expected);
     }
@@ -300,7 +341,7 @@ mod tests {
         let mut r = OsRng;
         let m = Matrix4::repeat(1);
         let mut g = new_grid(m);
-        let (res, _) = g.shift(&mut r, Direction::Up, 12);
+        let (res, _, _) = g.shift(&mut r, Direction::Up, 12);
         assert_eq!(res.matrix, m);
     }
 
