@@ -205,17 +205,17 @@ impl Grid {
     }
 
     fn combinable(elements: &[u32]) -> bool {
-        fn inner(elements: &[u32], acc: bool, f: &dyn Fn(u32, u32) -> bool) -> bool {
+        fn inner(es: &[u32], acc: bool, f: &dyn Fn(u32, u32) -> bool) -> bool {
             if acc {
                 acc
             } else {
-                match elements {
-                    [h1, h2, _] =>
+                match es {
+                    [h1, h2, _t @ ..] =>
                         if f(*h1, *h2) {
                             true
                         } else {
-                            inner(&elements[1..], acc, f)
-                        }
+                            inner(&es[1..], acc, f)
+                        },
                     _ => false,
                 }
             }
@@ -232,6 +232,20 @@ mod tests {
 
     fn new_grid(matrix: SMatrix<u32, 4, 4>) -> Grid {
         Grid { matrix }
+    }
+
+    #[test]
+    fn combinable_true_if_identical_ge_3() -> () {
+        let slice = &[1, 3, 3, 1];
+        let res = Grid::combinable(slice);
+        assert!(res);
+    }
+
+    #[test]
+    fn combinable_true_if_1_2() -> () {
+        let slice = &[1, 2, 3, 1];
+        let res = Grid::combinable(slice);
+        assert!(res);
     }
 
     #[test]
