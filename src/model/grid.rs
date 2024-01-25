@@ -249,6 +249,32 @@ mod tests {
     }
 
     #[test]
+    fn game_over_is_false_if_there_is_a_0() -> () {
+        let mut m = Matrix4::repeat(1);
+        m[(1, 3)] = 0;
+        let g = new_grid(m);
+        assert!(!g.game_over());
+    }
+
+    #[test]
+    fn game_over_is_false_if_there_is_a_col_combination_possible() -> () {
+        let mut m = Matrix4::repeat(1);
+        m[(1, 0)] = 3;
+        m[(2, 0)] = 3;
+        let g = new_grid(m);
+        assert!(!g.game_over());
+    }
+
+    #[test]
+    fn game_over_is_false_if_there_is_a_row_combination_possible() -> () {
+        let mut m = Matrix4::repeat(1);
+        m[(1, 0)] = 3;
+        m[(1, 1)] = 3;
+        let g = new_grid(m);
+        assert!(!g.game_over());
+    }
+
+    #[test]
     fn force_insert_next_tile_some_if_zero_found_up() -> () {
         let mut r = OsRng;
         let mut m = Matrix4::repeat(1);
