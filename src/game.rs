@@ -158,6 +158,8 @@ impl Game {
     ) -> ControlFlow<()> {
         if let Some(dir) = crate::model::direction::Direction::from_key_code(key.code) {
             self.state.shift(r, dir);
+        } else if key.code == KeyCode::Char('u') {
+            self.state.shift_back();
         } else if key.code == KeyCode::Char('q') {
             return ControlFlow::Break(());
         }
