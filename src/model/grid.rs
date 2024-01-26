@@ -5,6 +5,7 @@ use crate::utils::matrix_any::MatrixAny;
 
 use super::{buckets::Buckets, dimension::Dimension, direction::Direction};
 
+#[derive(Clone, Copy)]
 pub struct Grid {
     pub matrix: SMatrix<u32, 4, 4>,
 }
@@ -14,9 +15,8 @@ impl Grid {
         let grid_size = 16;
         let buckets = Buckets::new(r, base_values, grid_size);
         let elements = buckets.draw(r);
-        Grid {
-            matrix: Matrix4::from_iterator(elements),
-        }
+        let m = Matrix4::from_iterator(elements);
+        Grid { matrix: m }
     }
 
     pub fn shift<R: Rng + ?Sized>(
@@ -29,6 +29,7 @@ impl Grid {
         let dim = dir.associated_dimension();
 
         let mut next_tile_inserted = false;
+        let mut mutated = false;
 
         let size = if dim == Dimension::Col {
             self.matrix.ncols()
@@ -40,9 +41,10 @@ impl Grid {
                 if reverse_needed {
                     elements.reverse()
                 }
-                let (mut new_line, mutated, combined) =
+                let (mut new_line, muta, combined) =
                     Self::shift_line(&elements, next_tile, next_tile_inserted);
-                if mutated {
+                if muta {
+                    mutated = true;
                     if !next_tile_inserted && combined {
                         next_tile_inserted = true;
                     }
@@ -59,12 +61,14 @@ impl Grid {
                 }
             }
         }
-        if !next_tile_inserted {
+
+        if !next_tile_inserted && mutated {
             let idx = dir.index();
+            let inverse_dim = dim.inverse();
             if let Some(line_with_next_tile) =
-                Self::force_insert_next_tile(r, self.matrix, idx, dim, next_tile)
+                Self::force_insert_next_tile(r, self.matrix, idx, inverse_dim, next_tile)
             {
-                if dim == Dimension::Col {
+                if inverse_dim == Dimension::Col {
                     self.matrix
                         .set_column(idx, &Vector4::from_row_slice(&line_with_next_tile));
                 } else {
@@ -179,8 +183,13 @@ impl Grid {
             }
         }
 
-        let (mut res, mutated, combined) =
-            inner(elements, Vec::with_capacity(elements.len()), false, false, &Self::combiner);
+        let (mut res, mutated, combined) = inner(
+            elements,
+            Vec::with_capacity(elements.len()),
+            false,
+            false,
+            &Self::combiner,
+        );
         if combined {
             if next_tile_inserted {
                 res.push(0);
@@ -192,7 +201,6 @@ impl Grid {
             (res.into_boxed_slice(), mutated, combined)
         }
     }
-
 
     fn combiner(h1: u32, h2: u32) -> Option<u32> {
         if h1 == h2 && h1 > 2 {
@@ -210,12 +218,13 @@ impl Grid {
                 acc
             } else {
                 match es {
-                    [h1, h2, _t @ ..] =>
+                    [h1, h2, _t @ ..] => {
                         if f(*h1, *h2) {
                             true
                         } else {
                             inner(&es[1..], acc, f)
-                        },
+                        }
+                    }
                     _ => false,
                 }
             }

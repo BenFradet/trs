@@ -2,6 +2,7 @@ use rand::{distributions::Uniform, Rng};
 
 use crate::math::{distribution::Distribution, series::Series};
 
+#[derive(Clone, Copy)]
 pub struct Tile {
     value: u32,
     series: Series,

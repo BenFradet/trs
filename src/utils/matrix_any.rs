@@ -1,36 +1,35 @@
 use nalgebra::{SMatrix, Scalar};
 
-
 pub trait MatrixAny {
     type Item;
 
     fn any_row<F>(&self, f: F) -> bool
     where
         Self: Sized,
-        F: FnMut(&[Self::Item]) -> bool,
-    ;
+        F: FnMut(&[Self::Item]) -> bool;
 
     fn any_col<F>(&self, f: F) -> bool
     where
         Self: Sized,
-        F: FnMut(&[Self::Item]) -> bool,
-    ;
+        F: FnMut(&[Self::Item]) -> bool;
 }
 
 impl<T: Clone + Scalar, const C: usize, const R: usize> MatrixAny for SMatrix<T, C, R> {
     type Item = T;
 
     fn any_col<F>(&self, mut f: F) -> bool
-        where
-            Self: Sized,
-            F: FnMut(&[Self::Item]) -> bool, {
+    where
+        Self: Sized,
+        F: FnMut(&[Self::Item]) -> bool,
+    {
         self.column_iter().any(|c| f(c.as_slice()))
     }
 
     fn any_row<F>(&self, mut f: F) -> bool
-        where
-            Self: Sized,
-            F: FnMut(&[Self::Item]) -> bool, {
+    where
+        Self: Sized,
+        F: FnMut(&[Self::Item]) -> bool,
+    {
         // row views are not contiguous, hence the clone_owned
         self.row_iter().any(|r| f(r.clone_owned().as_slice()))
     }
