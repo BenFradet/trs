@@ -37,7 +37,7 @@ impl Game {
         Game {
             title: "Threes",
             instruction: "use ← 	↑ 	→ 	↓ to play",
-            state: State::new(r, Box::new([4, 2, 2, 2])),
+            state: State::from_base_values(r, Box::new([4, 2, 2, 2])),
             tile_width: 14,
             tile_height: 7,
             tile_number: 4,
