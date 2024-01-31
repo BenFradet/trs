@@ -36,11 +36,31 @@ pub const TWO_THEME: Theme = Theme {
     background: Color::Rgb(255, 102, 128),
     shadow: Color::Rgb(255, 0, 43),
 };
-pub const OTHER_THEME: Theme = Theme {
-    text: Color::Black,
-    background: Color::White,
-    shadow: Color::Rgb(255, 204, 102),
-};
+pub fn other_theme(elem: u32) -> Theme {
+    // this is not normalizing, everything above will be the same colour
+    let max: f32 = 100.0;
+    let scale: f32 = (elem as f32).min(max) / max;
+    let factor: f32 = (1.0 - scale).max(0.3);
+    let color: u8 = (255.0 * factor) as u8;
+    Theme {
+        text: Color::Black,
+        background: Color::Rgb(color, color, color),
+        shadow: Color::Rgb((255.0 * factor) as u8, (204.0 * factor) as u8, (102.0 * factor) as u8),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use ratatui::style::Color;
+
+    use super::other_theme;
+
+    #[test]
+    fn theme_is_modified_by_input_value() -> () {
+        let theme = other_theme(12);
+        assert_eq!(theme.background, Color::Rgb(224, 224, 224));
+    }
+}
 
 impl<'a> Square<'a> {
     pub fn new<T: Into<Line<'a>>>(label: T) -> Square<'a> {
@@ -61,7 +81,7 @@ impl<'a> Square<'a> {
             0 => Square::new("").theme(EMPTY_THEME),
             1 => Square::new("1").theme(ONE_THEME),
             2 => Square::new("2").theme(TWO_THEME),
-            _ => Square::new(elem.to_string()).theme(OTHER_THEME),
+            other => Square::new(elem.to_string()).theme(other_theme(other)),
         }
     }
 
