@@ -20,7 +20,7 @@ use ratatui::{
     Frame, Terminal,
 };
 
-use crate::{state::State, ui::square::Square};
+use crate::{state::State, ui::square::{Square, OTHER_THEME}};
 
 pub struct Game {
     title: &'static str,
@@ -36,7 +36,7 @@ impl Game {
         // todo: initial matrix should be gen'd
         Game {
             title: "Threes",
-            instruction: "use ← 	↑ 	→ 	↓ to play",
+            instruction: "use ← 	↑ 	→ 	↓ to play, q to quit, u to undo",
             state: State::from_base_values(r, Box::new([4, 2, 2, 2])),
             tile_width: 14,
             tile_height: 7,
@@ -101,6 +101,12 @@ impl Game {
             .title("next tile".dark_gray());
         let next_tile_widget = Square::from_elem(self.state.tile.current()).block(next_tile_block);
         frame.render_widget(next_tile_widget, horizontal_sep.split(main_layout[1])[0]);
+
+        let score_block = Block::new()
+            .borders(Borders::ALL)
+            .title("score".dark_gray());
+        let next_tile_widget = Square::from_elem(self.state.score()).theme(OTHER_THEME).block(score_block);
+        frame.render_widget(next_tile_widget, horizontal_sep.split(main_layout[1])[1]);
 
         // game block
         let game_block = Block::new()

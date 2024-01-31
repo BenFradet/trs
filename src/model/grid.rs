@@ -12,10 +12,6 @@ pub struct Grid {
 
 impl Grid {
 
-    pub fn new(matrix: SMatrix<u32, 4, 4>) -> Grid {
-        Grid { matrix }
-    }
-
     pub fn rand<R: Rng + ?Sized>(r: &mut R, base_values: Box<[u32]>) -> Grid {
         let grid_size = 16;
         let buckets = Buckets::new(r, base_values, grid_size);
@@ -244,6 +240,10 @@ mod tests {
 
     use super::*;
 
+    fn new_grid(matrix: SMatrix<u32, 4, 4>) -> Grid {
+        Grid { matrix }
+    }
+
     #[test]
     fn combinable_true_if_identical_ge_3() -> () {
         let slice = &[1, 3, 3, 1];
@@ -262,7 +262,7 @@ mod tests {
     fn game_over_is_false_if_there_is_a_0() -> () {
         let mut m = Matrix4::repeat(1);
         m[(1, 3)] = 0;
-        let g = Grid::new(m);
+        let g = new_grid(m);
         assert!(!g.game_over());
     }
 
@@ -271,7 +271,7 @@ mod tests {
         let mut m = Matrix4::repeat(1);
         m[(1, 0)] = 3;
         m[(2, 0)] = 3;
-        let g = Grid::new(m);
+        let g = new_grid(m);
         assert!(!g.game_over());
     }
 
@@ -280,7 +280,7 @@ mod tests {
         let mut m = Matrix4::repeat(1);
         m[(1, 0)] = 3;
         m[(1, 1)] = 3;
-        let g = Grid::new(m);
+        let g = new_grid(m);
         assert!(!g.game_over());
     }
 
@@ -350,7 +350,7 @@ mod tests {
     fn shift_grid_does_one_transformation_reversed_per_col() -> () {
         let mut r = OsRng;
         let m = Matrix4::new(1, 1, 1, 1, 2, 2, 2, 2, 1, 1, 1, 1, 2, 2, 2, 2);
-        let mut g = Grid::new(m);
+        let mut g = new_grid(m);
         let (res, _, _) = g.shift(&mut r, Direction::Down, 12);
         let expected = Matrix4::new(12, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3);
         assert_eq!(res.matrix, expected);
@@ -360,7 +360,7 @@ mod tests {
     fn shift_grid_does_one_transformation_reversed_per_row() -> () {
         let mut r = OsRng;
         let m = Matrix4::new(1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2);
-        let mut g = Grid::new(m);
+        let mut g = new_grid(m);
         let (res, _, _) = g.shift(&mut r, Direction::Right, 12);
         let expected = Matrix4::new(12, 1, 2, 3, 0, 1, 2, 3, 0, 1, 2, 3, 0, 1, 2, 3);
         assert_eq!(res.matrix, expected);
@@ -370,7 +370,7 @@ mod tests {
     fn shift_grid_does_no_more_than_one_transformation_per_col() -> () {
         let mut r = OsRng;
         let m = Matrix4::new(1, 1, 1, 1, 2, 2, 2, 2, 1, 1, 1, 1, 2, 2, 2, 2);
-        let mut g = Grid::new(m);
+        let mut g = new_grid(m);
         let (res, _, _) = g.shift(&mut r, Direction::Up, 12);
         let expected = Matrix4::new(3, 3, 3, 3, 1, 1, 1, 1, 2, 2, 2, 2, 12, 0, 0, 0);
         assert_eq!(res.matrix, expected);
@@ -380,7 +380,7 @@ mod tests {
     fn shift_grid_does_no_more_than_one_transformation_per_row() -> () {
         let mut r = OsRng;
         let m = Matrix4::new(1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2);
-        let mut g = Grid::new(m);
+        let mut g = new_grid(m);
         let (res, _, _) = g.shift(&mut r, Direction::Left, 12);
         let expected = Matrix4::new(3, 1, 2, 12, 3, 1, 2, 0, 3, 1, 2, 0, 3, 1, 2, 0);
         assert_eq!(res.matrix, expected);
@@ -390,7 +390,7 @@ mod tests {
     fn shift_grid_does_not_mutate_if_immutable() -> () {
         let mut r = OsRng;
         let m = Matrix4::repeat(1);
-        let mut g = Grid::new(m);
+        let mut g = new_grid(m);
         let (res, _, _) = g.shift(&mut r, Direction::Up, 12);
         assert_eq!(res.matrix, m);
     }

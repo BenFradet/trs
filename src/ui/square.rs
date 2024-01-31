@@ -1,3 +1,6 @@
+use std::fmt::Display;
+
+use num::{Num, NumCast};
 use ratatui::{
     buffer::Buffer,
     layout::{Margin, Rect},
@@ -6,13 +9,6 @@ use ratatui::{
     text::Line,
     widgets::{Block, Widget},
 };
-
-#[derive(Debug, Clone)]
-pub struct Square<'a> {
-    label: Line<'a>,
-    theme: Theme,
-    block: Option<Block<'a>>,
-}
 
 #[derive(Debug, Clone)]
 pub struct Theme {
@@ -36,12 +32,22 @@ pub const TWO_THEME: Theme = Theme {
     background: Color::Rgb(255, 102, 128),
     shadow: Color::Rgb(255, 0, 43),
 };
-pub fn other_theme(elem: u32) -> Theme {
-    // this is not normalizing, everything above will be the same colour
-    let max: f32 = 100.0;
-    let scale: f32 = (elem as f32).min(max) / max;
-    let factor: f32 = (1.0 - scale).max(0.3);
-    let color: u8 = (255.0 * factor) as u8;
+pub const OTHER_THEME: Theme = Theme {
+    text: Color::Black,
+    background: Color::Rgb(255, 255, 255),
+    shadow: Color::Rgb(255, 204, 102),
+};
+pub fn other_theme<T: Num + NumCast>(elem: T) -> Theme {
+    let (factor, color): (f64, u8) = if let Some(cast) = num::cast::<T, f64>(elem) {
+        // this is not normalizing, everything above will be the same colour
+        let max: f64 = 100.0;
+        let scale: f64 = cast.min(max) / max;
+        let factor: f64 = (1.0 - scale).max(0.3);
+        let color: u8 = (255.0 * factor) as u8;
+        (factor, color)
+    } else {
+        (1.0, 255)
+    };
     Theme {
         text: Color::Black,
         background: Color::Rgb(color, color, color),
@@ -57,9 +63,16 @@ mod tests {
 
     #[test]
     fn theme_is_modified_by_input_value() -> () {
-        let theme = other_theme(12);
+        let theme = other_theme::<u32>(12);
         assert_eq!(theme.background, Color::Rgb(224, 224, 224));
     }
+}
+
+#[derive(Debug, Clone)]
+pub struct Square<'a> {
+    label: Line<'a>,
+    theme: Theme,
+    block: Option<Block<'a>>,
 }
 
 impl<'a> Square<'a> {
@@ -76,11 +89,11 @@ impl<'a> Square<'a> {
         self
     }
 
-    pub fn from_elem(elem: u32) -> Square<'a> {
+    pub fn from_elem<T: Num + NumCast + Display + Copy>(elem: T) -> Square<'a> {
         match elem {
-            0 => Square::new("").theme(EMPTY_THEME),
-            1 => Square::new("1").theme(ONE_THEME),
-            2 => Square::new("2").theme(TWO_THEME),
+            zero if zero == T::zero() => Square::new("").theme(EMPTY_THEME),
+            one if one == T::one() => Square::new("1").theme(ONE_THEME),
+            two if two == T::one() + T::one() => Square::new("2").theme(TWO_THEME),
             other => Square::new(elem.to_string()).theme(other_theme(other)),
         }
     }

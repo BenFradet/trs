@@ -60,8 +60,12 @@ mod tests {
 
     use super::*;
 
+    fn new_grid(matrix: SMatrix<u32, 4, 4>) -> Grid {
+        Grid { matrix }
+    }
+
     fn new_state<R: Rng + ?Sized>(r: &mut R, m: SMatrix<u32, 4, 4>) -> State {
-        let g = Grid::new(m);
+        let g = new_grid(m);
         let t = Tile::new(r);
         State {
             grid: g,
