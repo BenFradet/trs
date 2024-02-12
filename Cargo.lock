@@ -555,6 +555,7 @@ dependencies = [
  "crossterm",
  "nalgebra",
  "num",
+ "once_cell",
  "rand",
  "ratatui",
 ]

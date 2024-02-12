@@ -20,15 +20,12 @@ use ratatui::{
     Frame, Terminal,
 };
 
-use crate::{state::State, ui::square::{Square, OTHER_THEME}};
+use crate::{state::State, ui::{layouts::{GAME_LAYOUT_H, GAME_LAYOUT_V, HORIZONTAL_SEP, MAIN_LAYOUT, ROW_LAYOUT}, square::{Square, OTHER_THEME}}};
 
 pub struct Game {
     title: &'static str,
     instruction: &'static str,
     state: State,
-    tile_width: u16,
-    tile_height: u16,
-    tile_number: u16,
 }
 
 impl Game {
@@ -38,9 +35,6 @@ impl Game {
             title: "Threes",
             instruction: "use ← 	↑ 	→ 	↓ to play, q to quit, u to undo",
             state: State::from_base_values(r, Box::new([4, 2, 2, 2])),
-            tile_width: 14,
-            tile_height: 7,
-            tile_number: 4,
         }
     }
 
@@ -69,15 +63,7 @@ impl Game {
     }
 
     fn ui(&mut self, frame: &mut Frame) -> () {
-        let main_layout = Layout::default()
-            .direction(Direction::Vertical)
-            .constraints([
-                Constraint::Length(2),
-                Constraint::Length(7),
-                Constraint::Length(40),
-                Constraint::Min(0),
-            ])
-            .split(frame.size());
+        let main_layout = MAIN_LAYOUT.split(frame.size());
         frame.render_widget(
             Paragraph::new(vec![
                 Line::from(self.title.dark_gray()).alignment(Alignment::Left)
@@ -85,63 +71,33 @@ impl Game {
             main_layout[0],
         );
 
-        let horizontal_sep = Layout::default()
-            .direction(Direction::Horizontal)
-            .constraints([
-                Constraint::Length(self.tile_width),
-                Constraint::Length(self.tile_width),
-                Constraint::Length(self.tile_width),
-                Constraint::Length(self.tile_width),
-                Constraint::Min(0),
-            ]);
-
         // next tile
         let next_tile_block = Block::new()
             .borders(Borders::ALL)
             .title("next tile".dark_gray());
         let next_tile_widget = Square::from_elem(self.state.tile.current()).block(next_tile_block);
-        frame.render_widget(next_tile_widget, horizontal_sep.split(main_layout[1])[0]);
+        frame.render_widget(next_tile_widget, HORIZONTAL_SEP.split(main_layout[1])[0]);
 
+        // score
         let score_block = Block::new()
             .borders(Borders::ALL)
             .title("score".dark_gray());
         let next_tile_widget = Square::from_elem(self.state.score()).theme(OTHER_THEME).block(score_block);
-        frame.render_widget(next_tile_widget, horizontal_sep.split(main_layout[1])[1]);
+        frame.render_widget(next_tile_widget, HORIZONTAL_SEP.split(main_layout[1])[1]);
 
-        // game block
+        // game
         let game_block = Block::new()
             .borders(Borders::ALL)
             .title(self.instruction.dark_gray());
-        let game_layout_h = Layout::default()
-            .direction(Direction::Horizontal)
-            .constraints([
-                Constraint::Max(self.tile_width * self.tile_number),
-                Constraint::Min(0),
-            ]);
-        let game_layout_v = Layout::default()
-            .direction(Direction::Vertical)
-            .constraints([
-                Constraint::Max(self.tile_height * self.tile_number),
-                Constraint::Min(0),
-            ]);
-        let game_area = game_layout_h.split(game_layout_v.split(main_layout[2])[0])[0];
+        let game_area = GAME_LAYOUT_H.split(GAME_LAYOUT_V.split(main_layout[2])[0])[0];
         frame.render_widget(game_block, game_area);
 
         // game
-        let game_rows = Layout::default()
-            .direction(Direction::Vertical)
-            .constraints([
-                Constraint::Length(self.tile_height),
-                Constraint::Length(self.tile_height),
-                Constraint::Length(self.tile_height),
-                Constraint::Length(self.tile_height),
-                Constraint::Min(0),
-            ])
-            .split(main_layout[2]);
-        let game_areas = game_rows
+        let row_layout = ROW_LAYOUT.split(main_layout[2]);
+        let game_areas = row_layout
             .iter()
             .flat_map(|row| {
-                horizontal_sep
+                HORIZONTAL_SEP
                     .split(*row)
                     .iter()
                     .copied()
