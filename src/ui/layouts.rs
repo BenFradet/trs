@@ -53,3 +53,14 @@ pub static ROW_LAYOUT: Lazy<Layout> = Lazy::new(||Layout::new(
         Constraint::Min(0),
     ],
 ));
+
+pub fn popup_layout(percent: u16, dir: Direction) -> Layout {
+    Layout::new(
+        dir,
+        [
+            Constraint::Percentage((100 - percent) / 2),
+            Constraint::Percentage(percent),
+            Constraint::Percentage((100 - percent) / 2),
+        ],
+    )
+}

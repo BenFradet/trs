@@ -13,14 +13,14 @@ use crossterm::{
 use rand::{rngs::OsRng, Rng};
 use ratatui::{
     backend::CrosstermBackend,
-    layout::{Alignment, Constraint, Direction, Layout},
+    layout::{Alignment, Direction, Rect},
     style::Stylize,
     text::Line,
-    widgets::{Block, Borders, Paragraph},
+    widgets::{Block, Borders, Clear, Paragraph},
     Frame, Terminal,
 };
 
-use crate::{state::State, ui::{layouts::{GAME_LAYOUT_H, GAME_LAYOUT_V, HORIZONTAL_SEP, MAIN_LAYOUT, ROW_LAYOUT}, square::{Square, OTHER_THEME}}};
+use crate::{state::State, ui::{layouts::{popup_layout, GAME_LAYOUT_H, GAME_LAYOUT_V, HORIZONTAL_SEP, MAIN_LAYOUT, ROW_LAYOUT}, square::{Square, OTHER_THEME}}};
 
 pub struct Game {
     title: &'static str,
@@ -63,6 +63,8 @@ impl Game {
     }
 
     fn ui(&mut self, frame: &mut Frame) -> () {
+        let score = self.state.score();
+
         let main_layout = MAIN_LAYOUT.split(frame.size());
         frame.render_widget(
             Paragraph::new(vec![
@@ -82,7 +84,7 @@ impl Game {
         let score_block = Block::new()
             .borders(Borders::ALL)
             .title("score".dark_gray());
-        let next_tile_widget = Square::from_elem(self.state.score()).theme(OTHER_THEME).block(score_block);
+        let next_tile_widget = Square::from_elem(score).theme(OTHER_THEME).block(score_block);
         frame.render_widget(next_tile_widget, HORIZONTAL_SEP.split(main_layout[1])[1]);
 
         // game
@@ -111,6 +113,15 @@ impl Game {
                 frame.render_widget(Square::from_elem(elem), game_areas[i * 4 + j])
             }
         }
+
+        if self.state.game_over {
+            let block = Block::default().title("game over").borders(Borders::ALL);
+            let area = centered_rect(40, 20, frame.size());
+            frame.render_widget(Clear, area); //this clears out the background
+            let text = format!("your score is {}, q to quit, r to restart", score);
+            let paragraph = Paragraph::new(text.dark_gray());
+            frame.render_widget(paragraph.block(block), area);
+        }
     }
 
     fn handle_key_event<R: Rng + ?Sized>(
@@ -122,11 +133,20 @@ impl Game {
             self.state.shift(r, dir);
         } else if key.code == KeyCode::Char('u') {
             self.state.shift_back();
+        } else if self.state.game_over && key.code == KeyCode::Char('r') {
+            self.state = State::from_base_values(r, Box::new([4, 2, 2, 2]));
         } else if key.code == KeyCode::Char('q') {
             return ControlFlow::Break(());
         }
         ControlFlow::Continue(())
     }
+}
+
+fn centered_rect(percent_x: u16, percent_y: u16, r: Rect) -> Rect {
+    let popup_layout_v = popup_layout(percent_y, Direction::Vertical)
+        .split(r);
+    popup_layout(percent_x, Direction::Horizontal)
+        .split(popup_layout_v[1])[1]
 }
 
 fn init_terminal() -> Result<Terminal<CrosstermBackend<Stdout>>> {

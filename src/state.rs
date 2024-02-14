@@ -5,6 +5,7 @@ use crate::{math::series::Series, model::direction::Direction, model::grid::Grid
 pub struct State {
     pub grid: Grid,
     pub tile: Tile,
+    pub game_over: bool,
     past_grid: Grid,
     past_tile: Tile,
     series: Series,
@@ -17,6 +18,7 @@ impl State {
         State {
             grid: g,
             tile: t,
+            game_over: false,
             past_grid: g,
             past_tile: t,
             series: Series::new(1, 2, 2),
@@ -28,6 +30,7 @@ impl State {
         self.past_tile = self.tile;
         let new_tile = self.tile.current();
         let (_, next_tile_inserted, game_over) = self.grid.shift(r, direction, new_tile);
+        self.game_over = game_over;
         if next_tile_inserted {
             let max = self.grid.matrix.max();
             self.tile.next(r, max);
@@ -70,6 +73,7 @@ mod tests {
         State {
             grid: g,
             tile: t,
+            game_over: false,
             past_grid: g,
             past_tile: t,
             series: Series::new(1, 2, 2),
