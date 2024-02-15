@@ -1,7 +1,7 @@
 use rand::{distributions::Uniform, Rng};
 
 pub struct Buckets {
-    storage: Box<[u32]>,
+    storage: Vec<u32>,
     desired_size: usize,
 }
 
@@ -9,20 +9,31 @@ pub struct Buckets {
 // e.g. I want to generate 4 elements but not more than one each
 impl Buckets {
     // unsafe for large generation
-    pub fn new<R: Rng + ?Sized>(
+    pub fn new<R: Rng + ?Sized, I>(
         r: &mut R,
-        mut base_values: Box<[u32]>,
+        base_values: I,
         desired_size: usize,
-    ) -> Buckets {
-        let missing_elements = desired_size as u32 - base_values.iter().sum::<u32>();
-        let size = base_values.len();
+    ) -> Buckets
+    where
+        I: IntoIterator<Item = u32>,
+    {
+        let (sum, size, mut elements) = base_values.into_iter()
+            .fold((0, 0, Vec::<u32>::new()), |acc, e| {
+                match acc {
+                    (sum, size, mut vec) => {
+                        vec.push(e);
+                        (sum + e, size + 1, vec)
+                    }
+                }
+            });
+        let missing_elements = desired_size as u32 - sum;
         let distribution = Uniform::new(0, size);
         for _i in 0..missing_elements {
             let index = r.sample(distribution);
-            base_values[index] = base_values[index] + 1;
+            elements[index] = elements[index] + 1;
         }
         Buckets {
-            storage: base_values,
+            storage: elements,
             desired_size,
         }
     }
@@ -60,9 +71,9 @@ mod tests {
     // idempotent ignoring rng
     fn draw_should_be_idempotent() -> () {
         let mut rng = OsRng;
-        let init: Box<[u32]> = Box::new([4, 2, 2, 2]);
+        let init = [4, 2, 2, 2];
         let desired_size = 16;
-        let bs = Buckets::new(&mut rng, init.clone(), desired_size);
+        let bs = Buckets::new(&mut rng, init, desired_size);
         let res1 = bs.draw(&mut rng);
         let res2 = bs.draw(&mut rng);
         assert_eq!(res1.len(), desired_size);
@@ -75,9 +86,9 @@ mod tests {
     #[test]
     fn draw_should_construct_vec_with_desired_size() -> () {
         let mut rng = OsRng;
-        let init: Box<[u32]> = Box::new([4, 2, 2, 2]);
+        let init = [4, 2, 2, 2];
         let desired_size = 16;
-        let bs = Buckets::new(&mut rng, init.clone(), desired_size);
+        let bs = Buckets::new(&mut rng, init, desired_size);
         let res = bs.draw(&mut rng);
         assert!(res.iter().all(|a| a >= &0 && a < &(init.len() as u32)));
     }
@@ -85,9 +96,9 @@ mod tests {
     #[test]
     fn draw_should_construct_vec_between_0_and_len() -> () {
         let mut rng = OsRng;
-        let init: Box<[u32]> = Box::new([4, 2, 2, 2]);
+        let init = [4, 2, 2, 2];
         let desired_size = 16;
-        let bs = Buckets::new(&mut rng, init.clone(), desired_size);
+        let bs = Buckets::new(&mut rng, init, desired_size);
         let res = bs.draw(&mut rng);
         assert_eq!(res.len(), desired_size);
     }
@@ -95,9 +106,9 @@ mod tests {
     #[test]
     fn new_copies_array_argument() -> () {
         let mut rng = OsRng;
-        let init: Box<[u32]> = Box::new([4, 2, 2, 2]);
+        let init = [4, 2, 2, 2];
         let desired_size = 16;
-        Buckets::new(&mut rng, init.clone(), desired_size);
+        Buckets::new(&mut rng, init, desired_size);
         assert_eq!(init[0], 4);
         assert_eq!(init[1], 2);
         assert_eq!(init[2], 2);
@@ -107,7 +118,7 @@ mod tests {
     #[test]
     fn new_generates_an_array_with_sum_desired_size() -> () {
         let mut rng = OsRng;
-        let init: Box<[u32]> = Box::new([4, 2, 2, 2]);
+        let init = [4, 2, 2, 2];
         let desired_size = 16;
         let bs = Buckets::new(&mut rng, init, desired_size);
         assert_eq!(bs.storage.iter().sum::<u32>(), desired_size as u32);
@@ -116,7 +127,7 @@ mod tests {
     #[test]
     fn new_has_same_length_as_init() -> () {
         let mut rng = OsRng;
-        let init: Box<[u32]> = Box::new([4, 2, 2, 2]);
+        let init = vec![4, 2, 2, 2];
         let desired_size = 16;
         let bs = Buckets::new(&mut rng, init.clone(), desired_size);
         assert_eq!(bs.storage.len(), init.len());
@@ -125,16 +136,16 @@ mod tests {
     #[test]
     fn new_adds_to_init() -> () {
         let mut rng = OsRng;
-        let init: Box<[u32]> = Box::new([4, 2, 2, 2]);
+        let init = [4, 2, 2, 2];
         let desired_size = 16;
-        let bs = Buckets::new(&mut rng, init.clone(), desired_size);
+        let bs = Buckets::new(&mut rng, init, desired_size);
         assert!(bs.storage.iter().zip(init.iter()).all(|(a, b)| a >= b));
     }
 
     #[test]
     fn new_desired_size_is_arg() -> () {
         let mut rng = OsRng;
-        let init: Box<[u32]> = Box::new([4, 2, 2, 2]);
+        let init = [4, 2, 2, 2];
         let desired_size = 16;
         let bs = Buckets::new(&mut rng, init, desired_size);
         assert_eq!(bs.desired_size, desired_size);

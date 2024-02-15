@@ -12,7 +12,10 @@ pub struct Grid {
 
 impl Grid {
 
-    pub fn rand<R: Rng + ?Sized>(r: &mut R, base_values: Box<[u32]>) -> Grid {
+    pub fn rand<R: Rng + ?Sized, I>(r: &mut R, base_values: I) -> Grid
+    where
+        I: IntoIterator<Item = u32>,
+    {
         let grid_size = 16;
         let buckets = Buckets::new(r, base_values, grid_size);
         let elements = buckets.draw(r);

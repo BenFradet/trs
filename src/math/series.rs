@@ -34,15 +34,6 @@ impl Series {
             i => ((i / (self.u_0 + self.u_1)) as f64).log(self.q as f64) as u32 + self.n_0,
         }
     }
-
-    //pub fn u_n_rec(self, n: u32) -> u32 {
-    //    match n {
-    //        0 => self.u_0,
-    //        1 => self.u_1,
-    //        2 => self.u_0 + self.u_1,
-    //        i => self.u_n(i - 1) * self.q,
-    //    }
-    //}
 }
 
 #[cfg(test)]

@@ -12,7 +12,10 @@ pub struct State {
 }
 
 impl State {
-    pub fn from_base_values<R: Rng + ?Sized>(r: &mut R, base_values: Box<[u32]>) -> State {
+    pub fn from_base_values<R: Rng + ?Sized, I>(r: &mut R, base_values: I) -> State
+    where
+        I: IntoIterator<Item = u32>,
+    {
         let g = Grid::rand(r, base_values);
         let t = Tile::new(r);
         State {

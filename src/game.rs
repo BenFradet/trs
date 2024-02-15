@@ -23,18 +23,13 @@ use ratatui::{
 use crate::{state::State, ui::{layouts::{popup_layout, GAME_LAYOUT_H, GAME_LAYOUT_V, HORIZONTAL_SEP, MAIN_LAYOUT, ROW_LAYOUT}, square::{Square, OTHER_THEME}}};
 
 pub struct Game {
-    title: &'static str,
-    instruction: &'static str,
     state: State,
 }
 
 impl Game {
     fn new(r: &mut OsRng) -> Game {
-        // todo: initial matrix should be gen'd
         Game {
-            title: "Threes",
-            instruction: "use ← 	↑ 	→ 	↓ to play, q to quit, u to undo",
-            state: State::from_base_values(r, Box::new([4, 2, 2, 2])),
+            state: State::from_base_values(r, [4, 2, 2, 2]),
         }
     }
 
@@ -68,7 +63,7 @@ impl Game {
         let main_layout = MAIN_LAYOUT.split(frame.size());
         frame.render_widget(
             Paragraph::new(vec![
-                Line::from(self.title.dark_gray()).alignment(Alignment::Left)
+                Line::from("threes".dark_gray()).alignment(Alignment::Left)
             ]),
             main_layout[0],
         );
@@ -90,7 +85,7 @@ impl Game {
         // game
         let game_block = Block::new()
             .borders(Borders::ALL)
-            .title(self.instruction.dark_gray());
+            .title("use ← 	↑ 	→ 	↓ to play, q to quit, u to undo".dark_gray());
         let game_area = GAME_LAYOUT_H.split(GAME_LAYOUT_V.split(main_layout[2])[0])[0];
         frame.render_widget(game_block, game_area);
 
@@ -134,7 +129,7 @@ impl Game {
         } else if key.code == KeyCode::Char('u') {
             self.state.shift_back();
         } else if self.state.game_over && key.code == KeyCode::Char('r') {
-            self.state = State::from_base_values(r, Box::new([4, 2, 2, 2]));
+            self.state = State::from_base_values(r, [4, 2, 2, 2]);
         } else if key.code == KeyCode::Char('q') {
             return ControlFlow::Break(());
         }
