@@ -11,6 +11,7 @@ pub struct Grid {
 }
 
 impl Grid {
+
     pub fn rand<R: Rng + ?Sized, I>(r: &mut R, base_values: I) -> Grid
     where
         I: IntoIterator<Item = u32>,
@@ -23,11 +24,11 @@ impl Grid {
     }
 
     pub fn shift<R: Rng + ?Sized>(
-        &mut self,
+        mut self,
         r: &mut R,
         dir: Direction,
         next_tile: u32,
-    ) -> (&mut Grid, bool, bool) {
+    ) -> (Grid, bool, bool) {
         let reverse_needed = dir.reverse_needed();
         let dim = dir.associated_dimension();
 
@@ -89,7 +90,7 @@ impl Grid {
         }
     }
 
-    fn game_over(&self) -> bool {
+    fn game_over(self) -> bool {
         // mutable => contains 0
         let mutable = self.matrix.iter().any(|e| *e == 0);
         // combinable
@@ -103,7 +104,7 @@ impl Grid {
         index: usize,
         dim: Dimension,
         next_tile: u32,
-    ) -> Option<Box<[u32]>> {
+    ) -> Option<Vec<u32>> {
         match Self::get_line(matrix, index, dim) {
             Some(slice) => {
                 let mut zeros = Vec::with_capacity(slice.len());
@@ -126,7 +127,7 @@ impl Grid {
         }
     }
 
-    fn get_line(matrix: SMatrix<u32, 4, 4>, index: usize, dim: Dimension) -> Option<Box<[u32]>> {
+    fn get_line(matrix: SMatrix<u32, 4, 4>, index: usize, dim: Dimension) -> Option<Vec<u32>> {
         if dim == Dimension::Col && index < matrix.ncols() {
             let col = matrix.column(index);
             Some(col.as_slice().into())
@@ -143,7 +144,7 @@ impl Grid {
         elements: &[u32],
         next_tile: u32,
         next_tile_inserted: bool,
-    ) -> (Box<[u32]>, bool, bool) {
+    ) -> (Vec<u32>, bool, bool) {
         fn inner(
             elements: &[u32],
             mut acc: Vec<u32>,
@@ -199,9 +200,9 @@ impl Grid {
             } else {
                 res.push(next_tile);
             }
-            (res.into_boxed_slice(), mutated, combined)
+            (res, mutated, combined)
         } else {
-            (res.into_boxed_slice(), mutated, combined)
+            (res, mutated, combined)
         }
     }
 
@@ -292,7 +293,7 @@ mod tests {
         let mut m = Matrix4::repeat(1);
         m[(3, 3)] = 0;
         let res = Grid::force_insert_next_tile(&mut r, m, 3, Dimension::Col, 12);
-        let exp: Box<[u32]> = Box::new([1, 1, 1, 12]);
+        let exp = vec![1, 1, 1, 12];
         assert_eq!(res, Some(exp));
     }
 
@@ -302,7 +303,7 @@ mod tests {
         let mut m = Matrix4::repeat(1);
         m[(3, 0)] = 0;
         let res = Grid::force_insert_next_tile(&mut r, m, 0, Dimension::Col, 12);
-        let exp: Box<[u32]> = Box::new([1, 1, 1, 12]);
+        let exp = vec![1, 1, 1, 12];
         assert_eq!(res, Some(exp));
     }
 
@@ -312,7 +313,7 @@ mod tests {
         let mut m = Matrix4::repeat(1);
         m[(0, 3)] = 0;
         let res = Grid::force_insert_next_tile(&mut r, m, 0, Dimension::Row, 12);
-        let exp: Box<[u32]> = Box::new([1, 1, 1, 12]);
+        let exp = vec![1, 1, 1, 12];
         assert_eq!(res, Some(exp));
     }
 
@@ -322,7 +323,7 @@ mod tests {
         let mut m = Matrix4::repeat(1);
         m[(3, 3)] = 0;
         let res = Grid::force_insert_next_tile(&mut r, m, 3, Dimension::Row, 12);
-        let exp: Box<[u32]> = Box::new([1, 1, 1, 12]);
+        let exp = vec![1, 1, 1, 12];
         assert_eq!(res, Some(exp));
     }
 
@@ -352,7 +353,7 @@ mod tests {
     fn shift_grid_does_one_transformation_reversed_per_col() -> () {
         let mut r = OsRng;
         let m = Matrix4::new(1, 1, 1, 1, 2, 2, 2, 2, 1, 1, 1, 1, 2, 2, 2, 2);
-        let mut g = new_grid(m);
+        let g = new_grid(m);
         let (res, _, _) = g.shift(&mut r, Direction::Down, 12);
         let expected = Matrix4::new(12, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3);
         assert_eq!(res.matrix, expected);
@@ -362,7 +363,7 @@ mod tests {
     fn shift_grid_does_one_transformation_reversed_per_row() -> () {
         let mut r = OsRng;
         let m = Matrix4::new(1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2);
-        let mut g = new_grid(m);
+        let g = new_grid(m);
         let (res, _, _) = g.shift(&mut r, Direction::Right, 12);
         let expected = Matrix4::new(12, 1, 2, 3, 0, 1, 2, 3, 0, 1, 2, 3, 0, 1, 2, 3);
         assert_eq!(res.matrix, expected);
@@ -372,7 +373,7 @@ mod tests {
     fn shift_grid_does_no_more_than_one_transformation_per_col() -> () {
         let mut r = OsRng;
         let m = Matrix4::new(1, 1, 1, 1, 2, 2, 2, 2, 1, 1, 1, 1, 2, 2, 2, 2);
-        let mut g = new_grid(m);
+        let g = new_grid(m);
         let (res, _, _) = g.shift(&mut r, Direction::Up, 12);
         let expected = Matrix4::new(3, 3, 3, 3, 1, 1, 1, 1, 2, 2, 2, 2, 12, 0, 0, 0);
         assert_eq!(res.matrix, expected);
@@ -382,7 +383,7 @@ mod tests {
     fn shift_grid_does_no_more_than_one_transformation_per_row() -> () {
         let mut r = OsRng;
         let m = Matrix4::new(1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2);
-        let mut g = new_grid(m);
+        let g = new_grid(m);
         let (res, _, _) = g.shift(&mut r, Direction::Left, 12);
         let expected = Matrix4::new(3, 1, 2, 12, 3, 1, 2, 0, 3, 1, 2, 0, 3, 1, 2, 0);
         assert_eq!(res.matrix, expected);
@@ -392,7 +393,7 @@ mod tests {
     fn shift_grid_does_not_mutate_if_immutable() -> () {
         let mut r = OsRng;
         let m = Matrix4::repeat(1);
-        let mut g = new_grid(m);
+        let g = new_grid(m);
         let (res, _, _) = g.shift(&mut r, Direction::Up, 12);
         assert_eq!(res.matrix, m);
     }
@@ -415,7 +416,7 @@ mod tests {
     fn get_line_should_return_col_if_dim_is_col() -> () {
         let m = Matrix4::new(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0);
         let res = Grid::get_line(m, 0, Dimension::Col);
-        let expected: Box<[u32]> = Box::new([1, 1, 1, 1]);
+        let expected = vec![1, 1, 1, 1];
         assert_eq!(res, Some(expected));
     }
 
@@ -423,7 +424,7 @@ mod tests {
     fn get_line_should_return_row_if_dim_is_row() -> () {
         let m = Matrix4::new(0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0);
         let res = Grid::get_line(m, 1, Dimension::Row);
-        let expected: Box<[u32]> = Box::new([1, 1, 1, 1]);
+        let expected = vec![1, 1, 1, 1];
         assert_eq!(res, Some(expected));
     }
 
@@ -433,7 +434,7 @@ mod tests {
         let (res, mutated, combined) = Grid::shift_line(&array, 12, true);
         assert!(mutated);
         assert!(!combined);
-        let expected: Box<[u32]> = Box::new([1, 2, 2, 0]);
+        let expected = vec![1, 2, 2, 0];
         assert_eq!(res, expected);
     }
 
@@ -443,7 +444,7 @@ mod tests {
         let (res, mutated, combined) = Grid::shift_line(&array, 12, true);
         assert!(!mutated);
         assert!(!combined);
-        let expected: Box<[u32]> = Box::new(array);
+        let expected: Vec<u32> = array.into();
         assert_eq!(res, expected);
     }
 
@@ -453,7 +454,7 @@ mod tests {
         let (res, mutated, combined) = Grid::shift_line(&array, 12, true);
         assert!(mutated);
         assert!(combined);
-        let expected: Box<[u32]> = Box::new([24, 3, 6, 0]);
+        let expected = vec![24, 3, 6, 0];
         assert_eq!(res, expected);
     }
 
@@ -463,7 +464,7 @@ mod tests {
         let (res, mutated, combined) = Grid::shift_line(&array, 12, true);
         assert!(mutated);
         assert!(combined);
-        let expected: Box<[u32]> = Box::new([24, 6, 6, 0]);
+        let expected = vec![24, 6, 6, 0];
         assert_eq!(res, expected);
     }
 
@@ -473,7 +474,7 @@ mod tests {
         let (res, mutated, combined) = Grid::shift_line(&array, 12, true);
         assert!(mutated);
         assert!(combined);
-        let expected: Box<[u32]> = Box::new([3, 6, 6, 0]);
+        let expected = vec![3, 6, 6, 0];
         assert_eq!(res, expected);
     }
 
@@ -483,7 +484,7 @@ mod tests {
         let (res, mutated, combined) = Grid::shift_line(&array, 12, true);
         assert!(mutated);
         assert!(combined);
-        let expected: Box<[u32]> = Box::new([3, 6, 6, 0]);
+        let expected = vec![3, 6, 6, 0];
         assert_eq!(res, expected);
     }
 }
