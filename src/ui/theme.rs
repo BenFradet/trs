@@ -23,7 +23,11 @@ impl Theme {
         Theme {
             text: Color::Black,
             background: Color::Rgb(color, color, color),
-            shadow: Color::Rgb((255.0 * factor) as u8, (204.0 * factor) as u8, (102.0 * factor) as u8),
+            shadow: Color::Rgb(
+                (255.0 * factor) as u8,
+                (204.0 * factor) as u8,
+                (102.0 * factor) as u8,
+            ),
         }
     }
 }

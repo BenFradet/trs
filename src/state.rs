@@ -1,6 +1,8 @@
 use rand::Rng;
 
-use crate::{math::series::Series, model::direction::Direction, model::grid::Grid, model::tile::Tile};
+use crate::{
+    math::series::Series, model::direction::Direction, model::grid::Grid, model::tile::Tile,
+};
 
 pub struct State {
     pub grid: Grid,
@@ -95,13 +97,13 @@ mod tests {
     #[test]
     fn score_is_correct_if_gt_3() -> () {
         let mut r = OsRng;
-        let series =  Series::new(1, 2, 2);
+        let series = Series::new(1, 2, 2);
         let grid_size = 16;
         for i in 2..10 {
             let u_i = series.u_n(i);
             let m = Matrix4::repeat(u_i);
             let s = new_state(&mut r, m);
-            assert_eq!(s.score(), 3_u64.pow(i-1) as u64 * grid_size);
+            assert_eq!(s.score(), 3_u64.pow(i - 1) as u64 * grid_size);
         }
     }
 

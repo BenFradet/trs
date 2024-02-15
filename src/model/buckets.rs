@@ -9,23 +9,19 @@ pub struct Buckets {
 // e.g. I want to generate 4 elements but not more than one each
 impl Buckets {
     // unsafe for large generation
-    pub fn new<R: Rng + ?Sized, I>(
-        r: &mut R,
-        base_values: I,
-        desired_size: usize,
-    ) -> Buckets
+    pub fn new<R: Rng + ?Sized, I>(r: &mut R, base_values: I, desired_size: usize) -> Buckets
     where
         I: IntoIterator<Item = u32>,
     {
-        let (sum, size, mut elements) = base_values.into_iter()
-            .fold((0, 0, Vec::<u32>::new()), |acc, e| {
-                match acc {
+        let (sum, size, mut elements) =
+            base_values
+                .into_iter()
+                .fold((0, 0, Vec::<u32>::new()), |acc, e| match acc {
                     (sum, size, mut vec) => {
                         vec.push(e);
                         (sum + e, size + 1, vec)
                     }
-                }
-            });
+                });
         let missing_elements = desired_size as u32 - sum;
         let distribution = Uniform::new(0, size);
         for _i in 0..missing_elements {

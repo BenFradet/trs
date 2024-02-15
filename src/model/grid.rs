@@ -11,7 +11,6 @@ pub struct Grid {
 }
 
 impl Grid {
-
     pub fn rand<R: Rng + ?Sized, I>(r: &mut R, base_values: I) -> Grid
     where
         I: IntoIterator<Item = u32>,

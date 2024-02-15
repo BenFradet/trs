@@ -20,7 +20,16 @@ use ratatui::{
     Frame, Terminal,
 };
 
-use crate::{state::State, ui::{layouts::{popup_layout, GAME_LAYOUT_H, GAME_LAYOUT_V, HORIZONTAL_SEP, MAIN_LAYOUT, ROW_LAYOUT}, square::Square, theme::OTHER_THEME}};
+use crate::{
+    state::State,
+    ui::{
+        layouts::{
+            popup_layout, GAME_LAYOUT_H, GAME_LAYOUT_V, HORIZONTAL_SEP, MAIN_LAYOUT, ROW_LAYOUT,
+        },
+        square::Square,
+        theme::OTHER_THEME,
+    },
+};
 
 pub struct Game {
     state: State,
@@ -79,7 +88,9 @@ impl Game {
         let score_block = Block::new()
             .borders(Borders::ALL)
             .title("score".dark_gray());
-        let next_tile_widget = Square::from_elem(score).theme(OTHER_THEME).block(score_block);
+        let next_tile_widget = Square::from_elem(score)
+            .theme(OTHER_THEME)
+            .block(score_block);
         frame.render_widget(next_tile_widget, HORIZONTAL_SEP.split(main_layout[1])[1]);
 
         // game
@@ -138,10 +149,8 @@ impl Game {
 }
 
 fn centered_rect(percent_x: u16, percent_y: u16, r: Rect) -> Rect {
-    let popup_layout_v = popup_layout(percent_y, Direction::Vertical)
-        .split(r);
-    popup_layout(percent_x, Direction::Horizontal)
-        .split(popup_layout_v[1])[1]
+    let popup_layout_v = popup_layout(percent_y, Direction::Vertical).split(r);
+    popup_layout(percent_x, Direction::Horizontal).split(popup_layout_v[1])[1]
 }
 
 fn init_terminal() -> Result<Terminal<CrosstermBackend<Stdout>>> {
