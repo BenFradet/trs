@@ -20,7 +20,7 @@ use ratatui::{
     Frame, Terminal,
 };
 
-use crate::{state::State, ui::{layouts::{popup_layout, GAME_LAYOUT_H, GAME_LAYOUT_V, HORIZONTAL_SEP, MAIN_LAYOUT, ROW_LAYOUT}, square::{Square, OTHER_THEME}}};
+use crate::{state::State, ui::{layouts::{popup_layout, GAME_LAYOUT_H, GAME_LAYOUT_V, HORIZONTAL_SEP, MAIN_LAYOUT, ROW_LAYOUT}, square::Square, theme::OTHER_THEME}};
 
 pub struct Game {
     state: State,
