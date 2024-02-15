@@ -38,7 +38,7 @@ impl State {
         self.game_over = game_over;
         if next_tile_inserted {
             let max = self.grid.matrix.max();
-            self.tile.next(r, max);
+            self.tile = self.tile.next(r, max);
         }
         self
     }

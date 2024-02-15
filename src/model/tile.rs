@@ -22,13 +22,13 @@ impl Tile {
         self.value
     }
 
-    pub fn next<R: Rng + ?Sized>(&mut self, r: &mut R, max: u32) -> u32 {
+    pub fn next<R: Rng + ?Sized>(mut self, r: &mut R, max: u32) -> Tile {
         let rank = self.rank(r, max);
         self.value = self.series.u_n(rank);
-        self.value
+        self
     }
 
-    fn rank<R: Rng + ?Sized>(&mut self, r: &mut R, max: u32) -> u32 {
+    fn rank<R: Rng + ?Sized>(&self, r: &mut R, max: u32) -> u32 {
         let max_rank = self.series.n(max);
         match max_rank {
             // high excluding
@@ -51,12 +51,12 @@ mod tests {
     #[test]
     fn next_is_less_than_or_equal_to_max() -> () {
         let mut r = OsRng;
-        let mut s = Tile::new(&mut r);
+        let s = Tile::new(&mut r);
         let mut vec = Vec::new();
         let max = 12;
         for _ in 0..=1000 {
             let res = s.next(&mut r, max);
-            vec.push(res);
+            vec.push(res.current());
         }
         assert!(vec.into_iter().all(|r| r <= 12));
     }
@@ -64,7 +64,7 @@ mod tests {
     #[test]
     fn rank_0_or_1_if_max_1() -> () {
         let mut r = OsRng;
-        let mut s = Tile::new(&mut r);
+        let s = Tile::new(&mut r);
         let mut vec = Vec::new();
         for _ in 0..=10 {
             let res = s.rank(&mut r, 1);
@@ -77,7 +77,7 @@ mod tests {
     #[test]
     fn rank_0_or_1_if_max_2() -> () {
         let mut r = OsRng;
-        let mut s = Tile::new(&mut r);
+        let s = Tile::new(&mut r);
         let mut vec = Vec::new();
         for _ in 0..=10 {
             let res = s.rank(&mut r, 2);
@@ -90,7 +90,7 @@ mod tests {
     #[test]
     fn rank_possibly_2_if_max_3() -> () {
         let mut r = OsRng;
-        let mut s = Tile::new(&mut r);
+        let s = Tile::new(&mut r);
         let mut vec = Vec::new();
         for _ in 0..=10 {
             let res = s.rank(&mut r, 3);
@@ -102,7 +102,7 @@ mod tests {
     #[test]
     fn rank_cant_have_more_than_max_rank() -> () {
         let mut r = OsRng;
-        let mut s = Tile::new(&mut r);
+        let s = Tile::new(&mut r);
         let mut vec = Vec::new();
         for _ in 0..=1000 {
             let res = s.rank(&mut r, 12);
@@ -116,7 +116,7 @@ mod tests {
     fn rank_can_be_0_if_max_greater_than_2() -> () {
         // the distribution is 1-based, our ranks are 0-based
         let mut r = OsRng;
-        let mut s = Tile::new(&mut r);
+        let s = Tile::new(&mut r);
         let mut vec = Vec::new();
         for _ in 0..=10 {
             let res = s.rank(&mut r, 12);
