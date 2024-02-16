@@ -34,7 +34,8 @@ impl State {
         self.past_grid = self.grid;
         self.past_tile = self.tile;
         let new_tile = self.tile.current();
-        let (_, next_tile_inserted, game_over) = self.grid.shift(r, direction, new_tile);
+        let (new_grid, next_tile_inserted, game_over) = self.grid.shift(r, direction, new_tile);
+        self.grid = new_grid;
         self.game_over = game_over;
         if next_tile_inserted {
             let max = self.grid.matrix.max();

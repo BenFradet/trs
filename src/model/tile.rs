@@ -22,9 +22,17 @@ impl Tile {
         self.value
     }
 
+    // 1/3 0
+    // 1/3 1
+    // 1/3 x
     pub fn next<R: Rng + ?Sized>(mut self, r: &mut R, max: u32) -> Tile {
-        let rank = self.rank(r, max);
-        self.value = self.series.u_n(rank);
+        let sampled = r.sample(Uniform::new(0, 3));
+        if sampled < 2 {
+            self.value = self.series.u_n(sampled);
+        } else {
+            let rank = self.rank(r, max);
+            self.value = self.series.u_n(rank);
+        }
         self
     }
 
